@@ -147,20 +147,26 @@ evalDecls (d:ds) = case d of TDecl v t -> undefined
                              AssignDecl x e -> eval e >>= \ee -> localVal (Map.insert x ee) (evalDecls ds)
 
 
---  case Map.lookup "main" venv of Nothing -> throwError "Cannot find \"main\" expression!"
---                               Just val -> liftIO (putStrLn $ show val)
-
 
 -- type Interpret a = ExceptT String (ReaderT (ValEnv, DataNameEnv) IO) a
 runInterpreter :: Interpret a -> IO (Either String a)
 runInterpreter comp = runReaderT (runExceptT comp) (Map.empty, Map.empty)
 
+
+interpretMain :: ValEnv -> IO ()
+interpretMain venv = case Map.lookup "main" venv of
+  Nothing -> putStrLn "Cannot find \"main\" expression!"
+  Just val -> putStrLn $ show val
+  
 main :: IO ()
 main = do
   code <- getContents
   let errTree = Par.pProgram $ Par.myLexer code
-  case errTree of Err.Ok tree -> do
-                    res <- runInterpreter (evalDecls decls) where Program decls = simplify tree
-                    case res of Left s -> putStrLn s
-                                Right env -> putStrLn $ show env
-                  Err.Bad s -> putStrLn s
+  case errTree of Err.Bad s -> putStrLn $ "Parser error: " ++ s
+                  Err.Ok tree -> do
+                    let Program decls = simplify tree
+                    res <- runInterpreter (evalDecls decls)
+                    case res of Right (venv, _) -> interpretMain venv
+                                Left s -> putStrLn $ "Interpreter error: " ++ s
+
+
