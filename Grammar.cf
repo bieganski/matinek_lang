@@ -1,0 +1,129 @@
+token LowerIdent ( lower (letter | '_')* ) ;
+
+separator LowerIdent "" ;
+
+token UpperIdent ( upper (letter | '_')* ) ;
+
+separator UpperIdent "" ;
+
+
+
+
+comment    "#" ;
+
+comment    "{#" "#}" ;
+
+
+
+
+entrypoints Program ;
+
+Program.    Program ::= [Decl]  ;
+
+
+
+
+TVar.       Type1 ::= LowerIdent ; 
+
+TCon.       Type1 ::= UpperIdent [Type]; -- Int / Maybe a
+
+TArr.       Type1 ::= Type2 "->" Type1 ;
+
+separator Type "" ;
+
+coercions Type 2 ;
+
+
+
+
+EVar.        Exp6 ::= LowerIdent ;
+
+ECon.        Exp6 ::= UpperIdent ;
+
+ELit.        Exp6 ::= Lit ;
+
+EApp.        Exp5 ::= Exp5 Exp6;
+
+EMul.        Exp4 ::= Exp3      "*"     Exp4 ;
+
+EAdd.        Exp3 ::= Exp3      "+"     Exp4 ;
+
+EIf.         Exp ::= "if" Exp "then" Exp "else" Exp ;
+
+ELet.        Exp ::= "let" "{" LowerIdent "=" Exp "}" "in" Exp ;
+
+ELam.        Exp ::= "\\" LowerIdent "->" Exp ;
+
+coercions  Exp 6 ;
+
+
+
+
+TDecl.      Decl ::= LowerIdent "::" Type ;
+
+DataDecl.      Decl ::= "data" UpperIdent [LowerIdent] "=" [Constr] ;
+
+AssignDecl.     Decl ::= LowerIdent "=" Exp ;
+
+terminator Decl ";" ;
+
+
+
+
+Constr.     Constr ::= UpperIdent [Type] ;
+
+separator nonempty Constr "|" ;
+
+
+
+
+LInt.       Lit ::= Integer ;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--ENeg.        Exp5 ::= "-" Exp6 ;
+
+--ENot.        Exp5 ::= "!" Exp6 ;
+
+--ERel.        Exp2 ::= Exp2 RelOp Exp3 ;
+
+--EAnd.        Exp1 ::= Exp2 "&&" Exp1 ;
+
+-- EOr.         Exp ::= Exp1 "||" Exp ;
+
+
+-- operators -----------------------------------------------
+
+--Add.    Binop ::= "+" ;
+
+--Sub.    Binop ::= "-" ;
+
+--Mul.    Binop ::= "*" ;
+
+--Eq.    Binop ::= "==" ;
+
+
+-- Div.       MulOp ::= "/" ;
+
+--Mod.       MulOp ::= "%" ;
+
+--LT.       RelOp ::= "<" ;
+
+--LE.        RelOp ::= "<=" ;
+
+--GTH.       RelOp ::= ">" ;
+
+--GE.        RelOp ::= ">=" ;
+
+--NE.        RelOp ::= "!=" ;
