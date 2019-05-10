@@ -22,16 +22,25 @@ import Simplify
 type ValEnv = Map.Map VName Value
 type DataNameEnv = Map.Map ConstrName DataName
 
+type Env = (ValEnv, DataNameEnv)
+
 data Value
   = VInt Integer
   | VBool Bool
   | VClosure String Exp ValEnv
   | VADT ConstrName [Value]
   | VHidden (Value -> Value) -- internal function
-   -- deriving (Eq, Ord, Show)
+   
 
-type Interpret a = ExceptT String (Reader (ValEnv, DataNameEnv)) a
+type Interpret a = ExceptT String (ReaderT Env IO) a
 
+
+instance Show Value where
+  show val = case val of VInt n -> show n
+                         VBool b -> show b
+                         VClosure s e env -> (show s) ++ " -> " ++ (show e)
+                         VADT cname vals -> cname ++ (show vals)
+                         VHidden f -> "AAAAAAAAAAAA"
 
 -- data List a = Nil | Cons a (List a)
 
@@ -110,7 +119,7 @@ evalOp Eq  (VBool v1) (VBool v2) = VBool $ v1 == v2
 evalOp Eq  (VInt v1) (VInt v2) = VBool $ v1 == v2
 
 
-
+{-
 data Value
   = VInt Integer
   | VBool Bool
@@ -123,26 +132,35 @@ data Decl
   | DataDecl DataName [VName] [Constr]
   | AssignDecl VName Exp
    deriving (Eq, Ord, Show, Read)
-  
+-}
 -- type Interpret a = ExceptT String (Reader (ValEnv, DataNameEnv)) a
   
 newData :: Decl -> Interpret ()
+newData = undefined
 
-evalDecls :: [Decl] -> Interpret ()
+evalDecls :: [Decl] -> Interpret Env
 evalDecls [] = do
-  venv <- askVal
-  case Map.lookup "main" venv of Nothing -> throwError 'Cannot find "main" expression!'
-                                 Just val -> 
+  env <- ask
+  return env
 evalDecls (d:ds) = case d of TDecl v t -> undefined
                              DataDecl _ _ _ -> throwError "data declarations only at top level supported!"
-                             AssignDecl x e -> localVal (Map.insert x (eval e)) (evalDecl ds)
+                             AssignDecl x e -> eval e >>= \ee -> localVal (Map.insert x ee) (evalDecls ds)
 
+
+--  case Map.lookup "main" venv of Nothing -> throwError "Cannot find \"main\" expression!"
+--                               Just val -> liftIO (putStrLn $ show val)
+
+
+-- type Interpret a = ExceptT String (ReaderT (ValEnv, DataNameEnv) IO) a
+runInterpreter :: Interpret a -> IO (Either String a)
+runInterpreter comp = runReaderT (runExceptT comp) (Map.empty, Map.empty)
 
 main :: IO ()
 main = do
   code <- getContents
-  let etree = Par.pProgram $ Par.myLexer code
-  case etree of Err.Ok tree -> putStrLn $ show $ simplify tree
-                Err.Bad s -> putStrLn s
-
-
+  let errTree = Par.pProgram $ Par.myLexer code
+  case errTree of Err.Ok tree -> do
+                    res <- runInterpreter (evalDecls decls) where Program decls = simplify tree
+                    case res of Left s -> putStrLn s
+                                Right env -> putStrLn $ show env
+                  Err.Bad s -> putStrLn s
