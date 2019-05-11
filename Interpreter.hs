@@ -134,9 +134,23 @@ data Decl
    deriving (Eq, Ord, Show, Read)
 -}
 -- type Interpret a = ExceptT String (Reader (ValEnv, DataNameEnv)) a
+
+
+-- TODO
+-- typy: w tej funkcji pojawiają się problemy
+addDataConstr :: DataName -> [VName] -> Constr -> ValEnv -> ValEnv
+addDataConstr dname letters (Constr cname types) venv =
+
+
+addDataVals :: Decl -> ValEnv -> ValEnv
+addDataVals (DataDecl dname letters []) = id
+addDataVals (DataDecl dname letters (con:cons)) venv = addDataVals (DataDecl dname letters cons) venv' where
+  venv' = addDataConstr dname letters con venv
   
-newData :: Decl -> Interpret ()
-newData = undefined
+newData :: Decl -> Env -> Env
+newData d@(DataDecl dname letters constrs) (venv, denv) = (venv', denv') where
+  denv' = Map.union denv $ Map.fromList $ zip $ constrs (repeat dname)
+  venv' = addDataVals d venv
 
 evalDecls :: [Decl] -> Interpret Env
 evalDecls [] = do
