@@ -29,6 +29,7 @@ data Value
   | VBool Bool
   | VClosure String Exp ValEnv
   | VADT ConstrName [Value]
+  | VCon Int Value -- constructor value : arity, VADT
   | VHidden (Value -> Value) -- internal function
    
 
@@ -138,19 +139,52 @@ data Decl
 
 -- TODO
 -- typy: w tej funkcji pojawiają się problemy
+ 
+
+incArity :: Value -> Value
+incArity (VCon arity vadt) = VCon (arity + 1) vadt
+
 addDataConstr :: DataName -> [VName] -> Constr -> ValEnv -> ValEnv
-addDataConstr dname letters (Constr cname types) venv =
+addDataConstr _ _ (Constr cname []) venv = venv
+addDataConstr dname letters (Constr cname (t:ts)) venv = if constrExists cname venv
+  then error "Interpreter: Constructor name duplication!"
+  else addDataConstr dname letters (Constr cname ts) venv' where
+    venv' = Map.insert cname cval venv where
+      cval = incArity $ Map.findWithDefault (VCon (-1) (VADT cname [])) cname venv
 
 
 addDataVals :: Decl -> ValEnv -> ValEnv
-addDataVals (DataDecl dname letters []) = id
+addDataVals (DataDecl dname letters []) venv = venv
 addDataVals (DataDecl dname letters (con:cons)) venv = addDataVals (DataDecl dname letters cons) venv' where
   venv' = addDataConstr dname letters con venv
-  
+
+_cname :: Constr -> ConstrName
+_cname (Constr cname _) = cname
+
+dataExists :: DataName -> DataNameEnv -> Bool
+dataExists dname denv = elem dname $ Map.elems denv
+
+constrExists :: ConstrName -> ValEnv -> Bool
+constrExists cname venv = elem cname $ Map.keys venv
+
 newData :: Decl -> Env -> Env
-newData d@(DataDecl dname letters constrs) (venv, denv) = (venv', denv') where
-  denv' = Map.union denv $ Map.fromList $ zip $ constrs (repeat dname)
-  venv' = addDataVals d venv
+newData d@(DataDecl dname letters constrs) (venv, denv) = if dataExists dname denv
+  then error "Interpreter: Data name duplication!"
+  else (venv', denv') where
+    denv' = Map.union denv $ Map.fromList $ zip (map _cname constrs) (repeat dname)
+    venv' = addDataVals d venv
+
+-- There are seperate monads for typechecking and program interpreting,
+-- but parsing data declarations changes both variable and type environment,
+-- thus I decided to preprocess declarations, parse data first and generate
+-- enhanced environments, passed to runInterpret
+-- return: Non-data declarations (we cannot just omit them in interpreting,
+-- for avoiding nested data declarations) and enhanced env.
+preprocessDataDecls :: ([Decl], Env) -> ([Decl], Env)
+preprocessDataDecls ([], env) = ([], env)
+preprocessDataDecls ( (d@(DataDecl DataName [VName] [Constr]):ds), env ) = preprocessDataDecl (ds, newData d env)
+preprocessDataDecls ((d:ds), env) = ((d:ds'), env') where (ds', env') = preprocessDataDecls (ds, env)
+
 
 evalDecls :: [Decl] -> Interpret Env
 evalDecls [] = do
