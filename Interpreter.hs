@@ -197,7 +197,7 @@ printMain venv = case Map.lookup "main" venv of
   Nothing -> putStrLn "Cannot find \"main\" expression!"
   Just val -> putStrLn $ show val
 
-env0 = (Map.empty, Map.empty)
+
 
 loadModule :: Import -> IO String
 loadModule (Import filename) = do
@@ -218,7 +218,11 @@ handleImports (x:xs) = do
   env <- _handleImport x
   local (const env) (handleImports xs)
 
-interpretCode :: String  -> Interpret Env
+
+_builtins :: [FilePath]
+_builtins = ["./builtins/builtins.hs"]
+
+interpretCode :: String -> Interpret Env
 interpretCode code = do
   let errTree = Par.pProgram $ Par.myLexer code
   case errTree of Err.Bad s -> throwError $ "Parser error: " ++ s
@@ -230,10 +234,21 @@ interpretCode code = do
                     local (const env) (evalDecls decls)
                     
 
+env0 = (Map.empty, Map.empty)
+
+loadBuiltins :: IO Env
+loadBuiltins = do
+  res <- runInterpreter (handleImports (map Import _builtins)) env0
+  case res of
+    Right env -> return env
+    Left s -> error $ "internal error: builitins"
+
+
 main :: IO ()
 main = do
   code <- getContents
-  res <- runInterpreter (interpretCode code) env0
+  envbuiltins <- loadBuiltins
+  res <- runInterpreter (interpretCode code) envbuiltins
   case res of
     Right (venv, _) -> printMain venv
     Left s -> putStrLn $ "Interpreter error: " ++ s
