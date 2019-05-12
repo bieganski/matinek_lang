@@ -205,10 +205,23 @@ runInterpreter :: Interpret a -> Env -> IO (Either String a)
 runInterpreter comp env = runReaderT (runExceptT comp) env
 
 
+printListSugarNonEmpty :: Value -> Bool -> IO ()
+printListSugarNonEmpty (VADT "Nil" []) False = putStrLn "]"
+printListSugarNonEmpty (VADT "Cons" [v, vs]) first = do
+  when first $ putStr "["
+  when (not first) $ putStr " "
+  putStr $ (show v) ++ ","
+  printListSugarNonEmpty vs False
+
+printListSugar :: Value -> IO ()
+printListSugar (VADT "Nil" []) = putStrLn "[]"
+printListSugar lst@(VADT "Cons" [v, vs]) = printListSugarNonEmpty lst True
+
 printMain :: ValEnv -> IO ()
 printMain venv = case Map.lookup "main" venv of
   Nothing -> putStrLn "Cannot find \"main\" expression!"
-  Just val -> putStrLn $ show val
+  Just val -> case val of lst@(VADT "Cons" _) -> printListSugar val
+                          _ -> putStrLn $ show val
 
 
 
