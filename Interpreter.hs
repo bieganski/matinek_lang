@@ -7,6 +7,7 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Except
 import Control.Monad.IO.Class
+import System.IO
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -14,10 +15,8 @@ import qualified Data.Set as Set
 import qualified ParGrammar as Par
 import qualified ErrM as Err
 
-
 import ProgGrammar
 import Simplify
-
 
 
 type ValEnv = Map.Map VName Value
@@ -31,7 +30,6 @@ data Value
   | VClosure String Exp ValEnv
   | VADT ConstrName [Value]
   | VCon Int Value -- constructor value : arity, VADT
---   | VHidden (Value -> Value) -- internal function # TODO - potrzebne?
    deriving (Eq, Ord)
 
 type Interpret a = ExceptT String (ReaderT Env IO) a
@@ -40,7 +38,7 @@ type Interpret a = ExceptT String (ReaderT Env IO) a
 instance Show Value where
   show val = case val of VInt n -> show n
                          VBool b -> show b
-                         VClosure x e env -> "\\" ++ (show x) ++ "  -> " ++ (show e)
+                         VClosure x e env -> "\\" ++ (show x) ++ " -> " ++ (show e)
                          VADT cname vals -> "VADT " ++  cname ++ (pprintlst vals)
                          VCon arity val -> "##VCON " ++ (show arity) ++ (show val)
 
@@ -179,9 +177,13 @@ evalDecls :: [Decl] -> Interpret Env
 evalDecls [] = do
   env <- ask
   return env
-evalDecls (d:ds) = case d of TDecl v t -> undefined
-                             DataDecl _ _ _ -> throwError "data declarations only at top level supported!"
-                             AssignDecl x e -> eval e >>= \ee -> localVal (Map.insert x ee) (evalDecls ds)
+evalDecls (d:ds) = case d
+  of TDecl v t -> undefined
+     DataDecl _ _ _ -> throwError "data declarations only at top level supported!"
+     AssignDecl x e -> do
+       venv <- askVal
+       when (elem x (Map.keys venv)) $ liftIO $ putStrLn $ "warning: overwriting " ++ (show x) ++ " variable."
+       eval e >>= \ee -> localVal (Map.insert x ee) (evalDecls ds)
 
 
 
@@ -190,24 +192,48 @@ runInterpreter :: Interpret a -> Env -> IO (Either String a)
 runInterpreter comp env = runReaderT (runExceptT comp) env
 
 
-interpretMain :: ValEnv -> IO ()
-interpretMain venv = case Map.lookup "main" venv of
+printMain :: ValEnv -> IO ()
+printMain venv = case Map.lookup "main" venv of
   Nothing -> putStrLn "Cannot find \"main\" expression!"
   Just val -> putStrLn $ show val
 
 env0 = (Map.empty, Map.empty)
 
+loadModule :: Import -> IO String
+loadModule (Import filename) = do
+  h <- openFile filename ReadMode
+  code <- hGetContents h
+  return code
+
+
+_handleImport :: Import -> Interpret Env
+_handleImport im = do
+  code <- liftIO $ loadModule im
+  interpretCode code
+
+
+handleImports :: [Import] -> Interpret Env
+handleImports [] = ask
+handleImports (x:xs) = do
+  env <- _handleImport x
+  local (const env) (handleImports xs)
+
+interpretCode :: String  -> Interpret Env
+interpretCode code = do
+  let errTree = Par.pProgram $ Par.myLexer code
+  case errTree of Err.Bad s -> throwError $ "Parser error: " ++ s
+                  Err.Ok tree -> do
+                    let Program imports _decls = simplify tree
+                    -- putStrLn $ show $ tree
+                    postimportenv <- handleImports imports
+                    let (decls, env) = preprocessDataDecls (_decls, postimportenv)
+                    local (const env) (evalDecls decls)
+                    
+
 main :: IO ()
 main = do
   code <- getContents
-  let errTree = Par.pProgram $ Par.myLexer code
-  case errTree of Err.Bad s -> putStrLn $ "Parser error: " ++ s
-                  Err.Ok tree -> do
-                    let Program _decls = simplify tree
-                    putStrLn $ show $ tree
-                    let (decls, env) = preprocessDataDecls (_decls, env0)
-                    res <- runInterpreter (evalDecls decls) env
-                    case res of Right (venv, _) -> interpretMain venv
-                                Left s -> putStrLn $ "Interpreter error: " ++ s
-
-
+  res <- runInterpreter (interpretCode code) env0
+  case res of
+    Right (venv, _) -> printMain venv
+    Left s -> putStrLn $ "Interpreter error: " ++ s

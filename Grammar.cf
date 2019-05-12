@@ -18,8 +18,13 @@ comment    "{#" "#}" ;
 
 entrypoints Program ;
 
-Program.    Program ::= [Decl]  ;
+Program.    Program ::= [Import] [Decl]  ;
 
+
+
+Import.     Import ::= "import" String ;
+
+separator Import "" ;
 
 
 
