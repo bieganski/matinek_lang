@@ -1,5 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+
 module Main where
 
 import Control.Monad.Reader
@@ -30,7 +31,7 @@ data Value
   | VClosure String Exp ValEnv
   | VADT ConstrName [Value]
   | VCon Int Value -- constructor value : arity, VADT
-  | VHidden (Value -> Value) -- internal function
+  | VHidden (Value -> Value) -- internal function # TODO - potrzebne?
    
 
 type Interpret a = ExceptT String (ReaderT Env IO) a
@@ -41,39 +42,9 @@ instance Show Value where
                          VBool b -> show b
                          VClosure s e env -> (show s) ++ " -> " ++ (show e)
                          VADT cname vals -> cname ++ (show vals)
-                         VCon arity val -> "VCON " ++ (show arity) ++ (show val)
+                         VCon arity val -> "##VCON " ++ (show arity) ++ (show val)
                          VHidden f -> "AAAAAAAAAAAA"
 
--- data List a = Nil | Cons a (List a)
-
--- TODO reverseList = foldl (flip (:)) []
-
---                 Either      [a, b]     Left a    VHidden (\x -> VADT Left [x])
---createConstrFun :: DataName -> [VName] -> Constr -> Value
---createConstrFun dname letters (Constr cname []) = VADT cname
---createConstrFun dname letters (Constr cname (t:ts)) = VHidden (\x -> resval) where
---  resval = createConstrFun dname letters (Constr cname ts)
-
-
--- TODO
--- przemyslec to
--- zakodzic
--- dodac monade IO, liftIO
--- obadac typecheck
--- ez 30 pkt
-
--- "data" declarations changes both variable and
--- type environment (different monads), thus preprocess them first
-{-
-createEnv :: (ValEnv, DataNameEnv, TypeEnv) -> [Decl] -> (ValEnv, DataNameEnv, TypeEnv)
-createEnv (v, d, t) [] = (v, d, t)
-createEnv (v, d, t) ((DataDecl dname letters (Constr cname args):constrs)) = createEnv (v', d', t') decls
-  where v' = Map.insert cname
-createEnv (v, d, t) (_:decls) = createEnv (v, d, t) decls -- omit other than "data" decls
--}
---generateconstr :: String -> [String] -> Constr -> a
---generateconstr dname letters (Constr cname []) = undefined
---generateconstr dname letters (Constr cname (t:ts)) = undefined
 
 localVal :: (ValEnv -> ValEnv) -> Interpret a -> Interpret a
 localVal f = local (\(a,b) -> (f a, b))
@@ -84,12 +55,29 @@ localData f = local (\(a, b) -> (a, f b))
 askVal :: Interpret ValEnv
 askVal = ask >>= return . fst
 
+append :: a -> [a] -> [a]
+append x [] = [x]
+append x (y:ys) = y : (append x ys)
+
+enhanceVData :: Value -> Value -> Interpret Value
+enhanceVData (VCon n (VADT cname vals)) val = case n of
+  0 -> throwError "internal error -  that should hace occured.."
+  1 -> return $ VADT cname $ append val vals
+  _ -> return $ VCon (n - 1) (VADT cname (append val vals))
+
 eval :: Exp -> Interpret Value
 eval e = case e of
   EVar s -> do
     env <- askVal
     maybe (throwError ("variable " ++ s ++ "does not exist")) return (Map.lookup s env)
   EApp (ELam x e1) e2 -> eval e2 >>= \res -> localVal (Map.insert x res) (eval e1)
+  EApp c@(ECon cname) e -> do
+    cv <- eval c
+    case cv of
+      VCon 0 _ -> throwError "thats not applicative! (constructor arity)"
+      c@(VCon n vadt) -> do
+        ev <- eval e
+        enhanceVData c ev
   EApp e1 e2 -> throwError $ "thats not applicative!" ++ "\ne1:" ++ (show e1) ++ "\ne2:" ++ (show e2)
   ELam x e -> ask >>= \env -> return $ VClosure x e (fst env)
   ELet x e1 e2 -> eval e1 >>= \res -> localVal (Map.insert x res) (eval e2)
@@ -103,12 +91,14 @@ eval e = case e of
     v1 <- eval e1
     v2 <- eval e2
     return $ evalOp op v1 v2
+  ECon cname -> do
+    (venv, denv) <- ask
+    case Map.lookup cname venv of
+      Nothing  -> throwError $ "Constructor " ++ cname ++ " does not exist!"
+      Just val -> return val
 
-      
---instance MonadIO Interpret where
---  liftIO res = local id res
-      
-      
+
+
 applyClos :: Value -> Value -> Interpret Value
 applyClos (VClosure x e env) val = localVal (Map.insert x val) (eval e)
 applyClos _ _  = throwError "apply: thats not applicative"
@@ -120,22 +110,6 @@ evalOp Mul (VInt v1) (VInt v2) = VInt $ v1 * v2
 evalOp Eq  (VBool v1) (VBool v2) = VBool $ v1 == v2
 evalOp Eq  (VInt v1) (VInt v2) = VBool $ v1 == v2
 
-
-{-
-data Value
-  = VInt Integer
-  | VBool Bool
-  | VClosure String Exp ValEnv
-  | VADT ConstrName [Value]
-  | VHidden (Value -> Value) -- internal function
-
-data Decl
-  = TDecl VName Type
-  | DataDecl DataName [VName] [Constr]
-  | AssignDecl VName Exp
-   deriving (Eq, Ord, Show, Read)
--}
--- type Interpret a = ExceptT String (Reader (ValEnv, DataNameEnv)) a
 
 
 incArity :: Value -> Value
@@ -153,7 +127,7 @@ addDataConstr dname letters (Constr cname (t:ts)) venv = addDataConstr dname let
 addDataVals :: Decl -> ValEnv -> ValEnv
 addDataVals (DataDecl dname letters []) venv = venv
 addDataVals (DataDecl dname letters (con:cons)) venv = if constrExists con venv
-  then error $ "Interpreter: Constructor name (" ++ (show con) ++ ") duplication!"
+  then error $ "Constructor name (" ++ (show con) ++ ") duplication!"
   else addDataVals (DataDecl dname letters cons) venv' where
     venv' = addDataConstr dname letters con venv
 
@@ -168,7 +142,7 @@ constrExists (Constr cname _) venv = elem cname $ Map.keys venv
 
 newData :: Decl -> Env -> Env
 newData d@(DataDecl dname letters constrs) (venv, denv) = if dataExists dname denv
-  then error "Interpreter: Data name duplication!"
+  then error "Data name duplication!"
   else (venv', denv') where
     denv' = Map.union denv $ Map.fromList $ zip (map _cname constrs) (repeat dname)
     venv' = addDataVals d venv
@@ -216,6 +190,7 @@ main = do
   case errTree of Err.Bad s -> putStrLn $ "Parser error: " ++ s
                   Err.Ok tree -> do
                     let Program _decls = simplify tree
+                    putStrLn $ show $ tree
                     let (decls, env) = preprocessDataDecls (_decls, env0)
                     res <- runInterpreter (evalDecls decls) env
                     case res of Right (venv, _) -> interpretMain venv
