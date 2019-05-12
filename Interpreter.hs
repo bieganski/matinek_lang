@@ -41,6 +41,7 @@ instance Show Value where
                          VBool b -> show b
                          VClosure s e env -> (show s) ++ " -> " ++ (show e)
                          VADT cname vals -> cname ++ (show vals)
+                         VCon arity val -> "VCON " ++ (show arity) ++ (show val)
                          VHidden f -> "AAAAAAAAAAAA"
 
 -- data List a = Nil | Cons a (List a)
@@ -89,7 +90,7 @@ eval e = case e of
     env <- askVal
     maybe (throwError ("variable " ++ s ++ "does not exist")) return (Map.lookup s env)
   EApp (ELam x e1) e2 -> eval e2 >>= \res -> localVal (Map.insert x res) (eval e1)
-  EApp _ _ -> throwError "thats not applicative!"
+  EApp e1 e2 -> throwError $ "thats not applicative!" ++ "\ne1:" ++ (show e1) ++ "\ne2:" ++ (show e2)
   ELam x e -> ask >>= \env -> return $ VClosure x e (fst env)
   ELet x e1 e2 -> eval e1 >>= \res -> localVal (Map.insert x res) (eval e2)
   ELit (LInt n) -> return $ VInt n
@@ -137,26 +138,24 @@ data Decl
 -- type Interpret a = ExceptT String (Reader (ValEnv, DataNameEnv)) a
 
 
--- TODO
--- typy: w tej funkcji pojawiają się problemy
- 
-
 incArity :: Value -> Value
 incArity (VCon arity vadt) = VCon (arity + 1) vadt
 
+-- TODO
+-- typy: w tej funkcji pojawiają się problemy
 addDataConstr :: DataName -> [VName] -> Constr -> ValEnv -> ValEnv
 addDataConstr _ _ (Constr cname []) venv = venv
-addDataConstr dname letters (Constr cname (t:ts)) venv = if constrExists cname venv
-  then error "Interpreter: Constructor name duplication!"
-  else addDataConstr dname letters (Constr cname ts) venv' where
-    venv' = Map.insert cname cval venv where
-      cval = incArity $ Map.findWithDefault (VCon (-1) (VADT cname [])) cname venv
+addDataConstr dname letters (Constr cname (t:ts)) venv = addDataConstr dname letters (Constr cname ts) venv' where
+  venv' = Map.insert cname cval venv where
+    cval = incArity $ Map.findWithDefault (VCon (-1) (VADT cname [])) cname venv
 
 
 addDataVals :: Decl -> ValEnv -> ValEnv
 addDataVals (DataDecl dname letters []) venv = venv
-addDataVals (DataDecl dname letters (con:cons)) venv = addDataVals (DataDecl dname letters cons) venv' where
-  venv' = addDataConstr dname letters con venv
+addDataVals (DataDecl dname letters (con:cons)) venv = if constrExists con venv
+  then error $ "Interpreter: Constructor name (" ++ (show con) ++ ") duplication!"
+  else addDataVals (DataDecl dname letters cons) venv' where
+    venv' = addDataConstr dname letters con venv
 
 _cname :: Constr -> ConstrName
 _cname (Constr cname _) = cname
@@ -164,8 +163,8 @@ _cname (Constr cname _) = cname
 dataExists :: DataName -> DataNameEnv -> Bool
 dataExists dname denv = elem dname $ Map.elems denv
 
-constrExists :: ConstrName -> ValEnv -> Bool
-constrExists cname venv = elem cname $ Map.keys venv
+constrExists :: Constr -> ValEnv -> Bool
+constrExists (Constr cname _) venv = elem cname $ Map.keys venv
 
 newData :: Decl -> Env -> Env
 newData d@(DataDecl dname letters constrs) (venv, denv) = if dataExists dname denv
@@ -182,7 +181,7 @@ newData d@(DataDecl dname letters constrs) (venv, denv) = if dataExists dname de
 -- for avoiding nested data declarations) and enhanced env.
 preprocessDataDecls :: ([Decl], Env) -> ([Decl], Env)
 preprocessDataDecls ([], env) = ([], env)
-preprocessDataDecls ( (d@(DataDecl DataName [VName] [Constr]):ds), env ) = preprocessDataDecl (ds, newData d env)
+preprocessDataDecls ( (d@(DataDecl _ _ _):ds), env ) = preprocessDataDecls (ds, newData d env)
 preprocessDataDecls ((d:ds), env) = ((d:ds'), env') where (ds', env') = preprocessDataDecls (ds, env)
 
 
@@ -196,24 +195,29 @@ evalDecls (d:ds) = case d of TDecl v t -> undefined
 
 
 
+
+
 -- type Interpret a = ExceptT String (ReaderT (ValEnv, DataNameEnv) IO) a
-runInterpreter :: Interpret a -> IO (Either String a)
-runInterpreter comp = runReaderT (runExceptT comp) (Map.empty, Map.empty)
+runInterpreter :: Interpret a -> Env -> IO (Either String a)
+runInterpreter comp env = runReaderT (runExceptT comp) env
 
 
 interpretMain :: ValEnv -> IO ()
 interpretMain venv = case Map.lookup "main" venv of
   Nothing -> putStrLn "Cannot find \"main\" expression!"
   Just val -> putStrLn $ show val
-  
+
+env0 = (Map.empty, Map.empty)
+
 main :: IO ()
 main = do
   code <- getContents
   let errTree = Par.pProgram $ Par.myLexer code
   case errTree of Err.Bad s -> putStrLn $ "Parser error: " ++ s
                   Err.Ok tree -> do
-                    let Program decls = simplify tree
-                    res <- runInterpreter (evalDecls decls)
+                    let Program _decls = simplify tree
+                    let (decls, env) = preprocessDataDecls (_decls, env0)
+                    res <- runInterpreter (evalDecls decls) env
                     case res of Right (venv, _) -> interpretMain venv
                                 Left s -> putStrLn $ "Interpreter error: " ++ s
 
