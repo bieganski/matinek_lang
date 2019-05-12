@@ -31,8 +31,8 @@ data Value
   | VClosure String Exp ValEnv
   | VADT ConstrName [Value]
   | VCon Int Value -- constructor value : arity, VADT
-  | VHidden (Value -> Value) -- internal function # TODO - potrzebne?
-   
+--   | VHidden (Value -> Value) -- internal function # TODO - potrzebne?
+   deriving (Eq, Ord)
 
 type Interpret a = ExceptT String (ReaderT Env IO) a
 
@@ -40,11 +40,14 @@ type Interpret a = ExceptT String (ReaderT Env IO) a
 instance Show Value where
   show val = case val of VInt n -> show n
                          VBool b -> show b
-                         VClosure s e env -> (show s) ++ " -> " ++ (show e)
-                         VADT cname vals -> cname ++ (show vals)
+                         VClosure x e env -> "\\" ++ (show x) ++ "  -> " ++ (show e)
+                         VADT cname vals -> "VADT " ++  cname ++ (pprintlst vals)
                          VCon arity val -> "##VCON " ++ (show arity) ++ (show val)
-                         VHidden f -> "AAAAAAAAAAAA"
 
+
+pprintlst :: Show a => [a] -> String
+pprintlst [] = " "
+pprintlst (x:xs) = " " ++ (show x) ++ (pprintlst xs)
 
 localVal :: (ValEnv -> ValEnv) -> Interpret a -> Interpret a
 localVal f = local (\(a,b) -> (f a, b))
@@ -61,7 +64,7 @@ append x (y:ys) = y : (append x ys)
 
 enhanceVData :: Value -> Value -> Interpret Value
 enhanceVData (VCon n (VADT cname vals)) val = case n of
-  0 -> throwError "internal error -  that should hace occured.."
+  0 -> throwError "internal error -  that should have occured.."
   1 -> return $ VADT cname $ append val vals
   _ -> return $ VCon (n - 1) (VADT cname (append val vals))
 
@@ -70,6 +73,7 @@ eval e = case e of
   EVar s -> do
     env <- askVal
     maybe (throwError ("variable " ++ s ++ "does not exist")) return (Map.lookup s env)
+{-
   EApp (ELam x e1) e2 -> eval e2 >>= \res -> localVal (Map.insert x res) (eval e1)
   EApp c@(ECon cname) e -> do
     cv <- eval c
@@ -78,7 +82,17 @@ eval e = case e of
       c@(VCon n vadt) -> do
         ev <- eval e
         enhanceVData c ev
-  EApp e1 e2 -> throwError $ "thats not applicative!" ++ "\ne1:" ++ (show e1) ++ "\ne2:" ++ (show e2)
+-}
+  EApp e1 e2 -> do
+    lol <- ask
+    e1v <- eval e1
+    case e1v of VClosure x e venv -> do
+                  e2v <- eval e2
+                  localVal (const (Map.insert x e2v venv)) (eval e)
+                c@(VCon _ _) -> do
+                  e2v <- eval e2
+                  enhanceVData c e2v
+                _ -> throwError $ "thats not applicative!" ++ "\ne1v:" ++ (show e1v) ++ "\nenv:" ++ (show lol)
   ELam x e -> ask >>= \env -> return $ VClosure x e (fst env)
   ELet x e1 e2 -> eval e1 >>= \res -> localVal (Map.insert x res) (eval e2)
   ELit (LInt n) -> return $ VInt n
@@ -101,7 +115,7 @@ eval e = case e of
 
 applyClos :: Value -> Value -> Interpret Value
 applyClos (VClosure x e env) val = localVal (Map.insert x val) (eval e)
-applyClos _ _  = throwError "apply: thats not applicative"
+applyClos e1 _  = throwError $ (show e1) ++  "is not applicative"
 
 evalOp :: Binop -> Value -> Value -> Value
 evalOp Add (VInt v1) (VInt v2) = VInt $ v1 + v2
@@ -118,10 +132,12 @@ incArity (VCon arity vadt) = VCon (arity + 1) vadt
 -- TODO
 -- typy: w tej funkcji pojawiają się problemy
 addDataConstr :: DataName -> [VName] -> Constr -> ValEnv -> ValEnv
-addDataConstr _ _ (Constr cname []) venv = venv
+addDataConstr _ _ (Constr cname []) venv = case Map.lookup cname venv of
+  Nothing -> Map.insert cname (VADT cname []) venv
+  Just _ -> venv
 addDataConstr dname letters (Constr cname (t:ts)) venv = addDataConstr dname letters (Constr cname ts) venv' where
   venv' = Map.insert cname cval venv where
-    cval = incArity $ Map.findWithDefault (VCon (-1) (VADT cname [])) cname venv
+    cval = incArity $ Map.findWithDefault (VCon 0 (VADT cname [])) cname venv
 
 
 addDataVals :: Decl -> ValEnv -> ValEnv
@@ -166,8 +182,6 @@ evalDecls [] = do
 evalDecls (d:ds) = case d of TDecl v t -> undefined
                              DataDecl _ _ _ -> throwError "data declarations only at top level supported!"
                              AssignDecl x e -> eval e >>= \ee -> localVal (Map.insert x ee) (evalDecls ds)
-
-
 
 
 

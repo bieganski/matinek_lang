@@ -36,17 +36,17 @@ coercions Type 2 ;
 
 
 
-EVar.        Exp6 ::= LowerIdent ;
+EVar.        Exp7 ::= LowerIdent ;
 
-ECon.        Exp6 ::= UpperIdent ;
+ECon.        Exp7 ::= UpperIdent ;
 
-ELit.        Exp6 ::= Lit ;
+ELit.        Exp7 ::= Lit ;
 
-EApp.        Exp5 ::= Exp5 Exp6;
+EApp.        Exp6 ::= Exp6 Exp7;
 
-EMul.        Exp4 ::= Exp3      "*"     Exp4 ;
+EMul.        Exp4 ::= Exp4 "*" Exp5 ;
 
-EAdd.        Exp3 ::= Exp3      "+"     Exp4 ;
+EAdd.        Exp3 ::= Exp3 "+" Exp4 ;
 
 EIf.         Exp ::= "if" Exp "then" Exp "else" Exp ;
 
@@ -54,7 +54,7 @@ ELet.        Exp ::= "let" "{" LowerIdent "=" Exp "}" "in" Exp ;
 
 ELam.        Exp ::= "\\" LowerIdent "->" Exp ;
 
-coercions  Exp 6 ;
+coercions  Exp 7 ;
 
 
 
