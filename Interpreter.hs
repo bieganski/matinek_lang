@@ -7,6 +7,8 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Except
 import Control.Monad.IO.Class
+import Control.Monad.List
+
 import System.IO
 
 import qualified Data.Map as Map
@@ -66,6 +68,14 @@ enhanceVData (VCon n (VADT cname vals)) val = case n of
   1 -> return $ VADT cname $ append val vals
   _ -> return $ VCon (n - 1) (VADT cname (append val vals))
 
+
+
+-- desugaring
+lstToCons :: [Value] -> Value
+lstToCons [] = VADT "Nil" []
+lstToCons (v:vs) = VADT "Cons" [v, (lstToCons vs)]
+
+
 eval :: Exp -> Interpret Value
 eval e = case e of
   EVar s -> do
@@ -108,6 +118,9 @@ eval e = case e of
     case Map.lookup cname venv of
       Nothing  -> throwError $ "Constructor " ++ cname ++ " does not exist!"
       Just val -> return val
+  ELst exps -> do
+    vals <- mapM eval exps
+    return $ lstToCons vals
 
 
 

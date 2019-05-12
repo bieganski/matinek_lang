@@ -59,6 +59,10 @@ ELet.        Exp ::= "let" "{" LowerIdent "=" Exp "}" "in" Exp ;
 
 ELam.        Exp ::= "\\" LowerIdent "->" Exp ;
 
+ELst.        Exp ::= "[" [Exp] "]" ;
+
+separator  Exp "," ;
+
 coercions  Exp 7 ;
 
 
