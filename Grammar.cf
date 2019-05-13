@@ -7,6 +7,7 @@ token UpperIdent ( upper (letter | '_')* ) ;
 separator UpperIdent "" ;
 
 
+layout toplevel ;
 
 
 comment    "#" ;
@@ -24,7 +25,7 @@ Program.    Program ::= [Import] [Decl]  ;
 
 Import.     Import ::= "import" String ;
 
-separator Import "" ;
+separator Import ";" ;
 
 
 
@@ -39,27 +40,44 @@ separator Type "" ;
 coercions Type 2 ;
 
 
+PVar.       Pat1 ::= LowerIdent ;
+PCon.       Pat ::= UpperIdent [Pat] ;
+PAny.       Pat ::= "_" ;
+
+coercions Pat 1 ;
+
+separator Pat "" ;
 
 
-EVar.        Exp7 ::= LowerIdent ;
+Branch.     Branch ::= Pat "->" Exp ;
 
-ECon.        Exp7 ::= UpperIdent ;
+separator Branch ";" ;
 
-ELit.        Exp7 ::= Lit ;
 
-EApp.        Exp6 ::= Exp6 Exp7;
 
-EMul.        Exp4 ::= Exp4 "*" Exp5 ;
+EVar.       Exp7 ::= LowerIdent ;
 
-EAdd.        Exp3 ::= Exp3 "+" Exp4 ;
+ECon.       Exp7 ::= UpperIdent ;
 
-EIf.         Exp ::= "if" Exp "then" Exp "else" Exp ;
+ELit.       Exp7 ::= Lit ;
 
-ELet.        Exp ::= "let" "{" LowerIdent "=" Exp "}" "in" Exp ;
+EApp.       Exp6 ::= Exp6 Exp7;
 
-ELam.        Exp ::= "\\" LowerIdent "->" Exp ;
+EMul.       Exp4 ::= Exp4 "*" Exp5 ;
 
-ELst.        Exp ::= "[" [Exp] "]" ;
+EAdd.       Exp3 ::= Exp3 "+" Exp4 ;
+
+EIf.        Exp ::= "if" Exp "then" Exp "else" Exp ;
+
+ELet.       Exp ::= "let" "{" LowerIdent "=" Exp "}" "in" Exp ;
+
+ELam.       Exp ::= "\\" LowerIdent "->" Exp ;
+
+ELst.       Exp ::= "[" [Exp] "]" ;
+
+ECase.      Exp ::= "case" Exp "of" "{" [Branch] "}" ;
+
+layout "of" ;
 
 separator  Exp "," ;
 
