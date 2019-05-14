@@ -147,8 +147,20 @@ eval e = case e of
     vals <- mapM eval exps
     return $ lstToCons vals
   ECase e branches = do
-    undefined
+    v <- eval e
+    _res <- mapM (uncurry unify) (zip branches (repeat v))
+    let res = zip _res branches
+    case filter ((\=Nothing) . fst) res of
+      [] -> throwError "Not exhausting pattern!"
+      [match] -> evalMatch match
+      (match:_) -> do
+        liftIO $ putStrLn $ "warning: more than one matching, executing first one."
+        evalMatch match
 
+
+evalMatch :: (Maybe ValEnv, Branch) -> Interpret Value
+evalMatch (Nothing, _) = throwError "evalMatch internal error"
+evalMatch (Just venv, Branch _ e) = localVal (const venv) (eval e)
 
 
 --  | VADT ConstrName [Value]
@@ -160,19 +172,20 @@ unifyConstr [] [] = return Map.empty
 unifyConstr [] _ = throwError $ "TODO czesciowa aplikacja"
 unifyConstr (p:pats) (v:vals)
 
--- TODO
--- zapewnic istnienie konstruktorow
-unify :: Pat -> Value -> -> Env -> Interpret (Maybe ValEnv)
-unify pat v (venv, denv) = case pat of
+
+unify :: Branch -> Value -> -> Env -> Interpret (Maybe ValEnv)
+unify (Branch pat) v (venv, denv) = case pat of
   PVar x -> return $ Just Map.singleton x v
   PCon cname pats ->
     case Map.lookup cname venv of
       Nothing -> throwError $ "Constructor " ++ (show cname) ++ " does not exist!"
       Just (VADT cname' []) -> case pats of
         [] -> if cname \= cname' then return Nothing else return $ Just Map.empty
-        _ -> throwError "arity error: 0 vs " ++ (show (length pats))
-      VCon n (VADT cname) -> undefined
-      _ -> throwError "OOOOOOOOOOOOOOOOOFAK"
+        _ -> 
+      VCon n (VADT cname) -> case length paths of
+        n -> TODO
+        _ -> throwError "arity error: " ++ (show n) ++ "vs " ++ (show (length pats))
+      _ -> throwError "OOOOOOOOOOOOOO internal error"
   PLit (Lit int) -> case v of
     VInt int' -> if int == int' then return $ Just Map.empty else return Nothing
     _ -> throwError "Cannot unify literal with nonliteral!"
