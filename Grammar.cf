@@ -42,6 +42,7 @@ coercions Type 2 ;
 
 PVar.       Pat1 ::= LowerIdent ;
 PCon.       Pat ::= UpperIdent [Pat] ;
+PLit.       Pat ::= Lit ;
 PAny.       Pat ::= "_" ;
 
 coercions Pat 1 ;

@@ -84,3 +84,19 @@ instance Simplable A.Exp P.Exp where
     A.ELst exps -> P.ELst $ simpl exps
     A.EEq e1 e2 -> P.EOp (simpl e1) P.Eq (simpl e2)
     A.ESub e1 e2 -> P.EOp (simpl e1) P.Sub (simpl e2)
+    A.ECase e branches -> P.ECase (simpl e) (simpl branches)
+
+
+instance Simplable A.Lit P.Lit where
+  simpl (A.LInt int) = P.LInt int
+
+
+instance Simplable A.Pat P.Pat where
+  simpl p = case p of
+    A.PVar id ->P.PVar $ fetch id
+    A.PCon id pats -> P.PCon (fetch id) (simpl pats)
+    A.PLit lit -> P.PLit (simpl lit)
+    A.PAny -> P.PAny
+
+instance Simplable A.Branch P.Branch where
+  simpl (A.Branch pat exp) = P.Branch (simpl pat) (simpl exp)

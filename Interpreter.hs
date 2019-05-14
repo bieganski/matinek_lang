@@ -1,5 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Main where
 
@@ -64,7 +66,7 @@ append x (y:ys) = y : (append x ys)
 
 enhanceVData :: Value -> Value -> Interpret Value
 enhanceVData (VCon n (VADT cname vals)) val = case n of
-  0 -> throwError "internal error -  that should have occured.."
+  0 -> throwError "internal error -  that should not have occured.."
   1 -> return $ VADT cname $ append val vals
   _ -> return $ VCon (n - 1) (VADT cname (append val vals))
 
@@ -123,8 +125,10 @@ eval e = case e of
                   enhanceVData c e2v
                 _ -> throwError $ "thats not applicative!" ++ "\nexp:" ++ (show e1v)
   ELam x e -> ask >>= \env -> return $ VClosure x e (fst env)
-  ELet x e1 e2 -> eval e1 >>= \res -> localVal (Map.insert x res) (eval e2)
-  -- TODO ten let rekurencyjny
+  ELet x e1 e2 -> do
+    (env, _) <- ask
+    rec newenv <- localVal (const newenv) $ (eval e1) >>= \d -> return (Map.insert x d env)
+    localVal (const newenv) $ eval e2
   ELit (LInt n) -> return $ VInt n
   EIf cond tr fl -> eval cond >>= \res ->
     case res of VADT "True" [] -> eval tr
@@ -142,6 +146,39 @@ eval e = case e of
   ELst exps -> do
     vals <- mapM eval exps
     return $ lstToCons vals
+  ECase e branches = do
+    undefined
+
+
+
+--  | VADT ConstrName [Value]
+--  | VCon Int Value -- constructor value : arity, VADT
+
+
+unifyConstr :: [Pat] -> [Value] -> Interpret (Maybe ValEnv)
+unifyConstr [] [] = return Map.empty
+unifyConstr [] _ = throwError $ "TODO czesciowa aplikacja"
+unifyConstr (p:pats) (v:vals)
+
+-- TODO
+-- zapewnic istnienie konstruktorow
+unify :: Pat -> Value -> -> Env -> Interpret (Maybe ValEnv)
+unify pat v (venv, denv) = case pat of
+  PVar x -> return $ Just Map.singleton x v
+  PCon cname pats ->
+    case Map.lookup cname venv of
+      Nothing -> throwError $ "Constructor " ++ (show cname) ++ " does not exist!"
+      Just (VADT cname' []) -> case pats of
+        [] -> if cname \= cname' then return Nothing else return $ Just Map.empty
+        _ -> throwError "arity error: 0 vs " ++ (show (length pats))
+      VCon n (VADT cname) -> undefined
+      _ -> throwError "OOOOOOOOOOOOOOOOOFAK"
+  PLit (Lit int) -> case v of
+    VInt int' -> if int == int' then return $ Just Map.empty else return Nothing
+    _ -> throwError "Cannot unify literal with nonliteral!"
+  PAny -> return $ Just Map.empty
+
+evalCase :: Exp -> Interpret Value
 
 {-
 eval :: Exp -> Env -> Value

@@ -31,12 +31,22 @@ data Exp
   | EOp Exp Binop Exp
   | ECon ConstrName
   | ELst [Exp]
+  | ECase Exp [Branch]
   deriving (Show, Eq, Ord, Read)
+
+data Pat
+    = PVar VName
+    | PCon ConstrName [Pat]
+    | PLit Lit
+    | PAny
+  deriving (Eq, Ord, Show, Read)
+
+data Branch = Branch Pat Exp
+  deriving (Eq, Ord, Show, Read)
 
 
 data Lit
   = LInt Integer
-  | LBool Bool
   deriving (Show, Eq, Ord, Read)
 
 
