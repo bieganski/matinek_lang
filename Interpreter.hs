@@ -28,10 +28,10 @@ type Env = (ValEnv, DataNameEnv)
 
 data Value
   = VInt Integer
-  | VBool Bool
   | VClosure String Exp ValEnv
   | VADT ConstrName [Value]
   | VCon Int Value -- constructor value : arity, VADT
+  | VErr String
    deriving (Eq, Ord)
 
 type Interpret a = ExceptT String (ReaderT Env IO) a
@@ -39,10 +39,10 @@ type Interpret a = ExceptT String (ReaderT Env IO) a
 
 instance Show Value where
   show val = case val of VInt n -> show n
-                         VBool b -> show b
                          VClosure x e env -> "\\" ++ (show x) ++ " -> " ++ (show e)
                          VADT cname vals -> "VADT " ++  cname ++ (pprintlst vals)
                          VCon arity val -> "##VCON " ++ (show arity) ++ (show val)
+                         VErr s -> show s
 
 
 pprintlst :: Show a => [a] -> String
@@ -76,11 +76,32 @@ lstToCons [] = VADT "Nil" []
 lstToCons (v:vs) = VADT "Cons" [v, (lstToCons vs)]
 
 
+
+vid :: Value
+vid = VClosure "x" (EVar "x") Map.empty
+
+
+-- var = e(var)
+{-
+evalFix :: Exp -> VName -> Maybe Value -> Interpret Value
+evalFix e var prevval = do
+  val <- localVal (Map.insert var vid) $ eval e
+  case prevval of
+    Nothing -> evalFix e var (Just ev)
+    Just prev -> if prev == val then return val else evalFix e var (Just val)
+-}
+
+
+tt, ff :: Value
+tt = VADT "True" []
+ff = VADT "False" []
+
+
 eval :: Exp -> Interpret Value
 eval e = case e of
   EVar s -> do
     env <- askVal
-    maybe (throwError ("variable " ++ s ++ "does not exist")) return (Map.lookup s env)
+    maybe (throwError ("variable " ++ (show s) ++ " does not exist")) return (Map.lookup s env)
 {-
   EApp (ELam x e1) e2 -> eval e2 >>= \res -> localVal (Map.insert x res) (eval e1)
   EApp c@(ECon cname) e -> do
@@ -100,15 +121,15 @@ eval e = case e of
                 c@(VCon _ _) -> do
                   e2v <- eval e2
                   enhanceVData c e2v
-                _ -> throwError $ "thats not applicative!" ++ "\ne1v:" ++ (show e1v) ++ "\nenv:" ++ (show lol)
+                _ -> throwError $ "thats not applicative!" ++ "\nexp:" ++ (show e1v)
   ELam x e -> ask >>= \env -> return $ VClosure x e (fst env)
   ELet x e1 e2 -> eval e1 >>= \res -> localVal (Map.insert x res) (eval e2)
+  -- TODO ten let rekurencyjny
   ELit (LInt n) -> return $ VInt n
-  ELit (LBool b) -> return $ VBool b
   EIf cond tr fl -> eval cond >>= \res ->
-    case res of VBool True -> eval tr
-                VBool False -> eval fl
-                _ -> throwError "thats not boolean value!"
+    case res of VADT "True" [] -> eval tr
+                VADT "False" [] -> eval fl
+                t -> throwError $ "Boolean value expected! Got: " ++ (show t)
   EOp e1 op e2 -> do
     v1 <- eval e1
     v2 <- eval e2
@@ -122,7 +143,18 @@ eval e = case e of
     vals <- mapM eval exps
     return $ lstToCons vals
 
+{-
+eval :: Exp -> Env -> Value
+eval e env = case e of
+  EVar x -> maybe
+            (VErr $ "variable " ++ (show x) ++ " does not exist")
+            id
+            (Map.lookup s env)
+  (EApp e1 e2) env -> case eval e1 env of
+                        VClosure x e venv -> eval e ((Map.insert x (eval e2 env) venv) . fst)
+                        c@(VCon _ _ ) = 
 
+-}
 
 applyClos :: Value -> Value -> Interpret Value
 applyClos (VClosure x e env) val = localVal (Map.insert x val) (eval e)
@@ -132,8 +164,8 @@ evalOp :: Binop -> Value -> Value -> Value
 evalOp Add (VInt v1) (VInt v2) = VInt $ v1 + v2
 evalOp Sub (VInt v1) (VInt v2) = VInt $ v1 - v2
 evalOp Mul (VInt v1) (VInt v2) = VInt $ v1 * v2
-evalOp Eq  (VBool v1) (VBool v2) = VBool $ v1 == v2
-evalOp Eq  (VInt v1) (VInt v2) = VBool $ v1 == v2
+-- evalOp Eq  (VADT " v1) (VBool v2) = VADT res [] where res = if v1 == v2 then "True" else "False"
+evalOp Eq  (VInt v1) (VInt v2) = VADT res [] where res = if v1 == v2 then "True" else "False"
 
 
 
@@ -198,6 +230,7 @@ evalDecls (d:ds) = case d
        when (elem x (Map.keys venv)) $ liftIO $ putStrLn $ "warning: overwriting " ++ (show x) ++ " variable."
        eval e >>= \ee -> localVal (Map.insert x ee) (evalDecls ds)
 
+-- evalFix :: Exp -> VName -> Maybe Value -> Interpret Value
 
 
 -- type Interpret a = ExceptT String (ReaderT (ValEnv, DataNameEnv) IO) a
@@ -251,7 +284,7 @@ _builtins = ["./builtins/builtins.hs"]
 interpretCode :: String -> Interpret Env
 interpretCode code = do
   let errTree = Par.pProgram $ Par.myLexer code
-  case errTree of Err.Bad s -> throwError $ "Parser error: " ++ s
+  case errTree of Err.Bad s -> throwError $ s
                   Err.Ok tree -> do
                     let Program imports _decls = simplify tree
                     -- putStrLn $ show $ tree

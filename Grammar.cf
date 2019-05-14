@@ -67,6 +67,10 @@ EMul.       Exp4 ::= Exp4 "*" Exp5 ;
 
 EAdd.       Exp3 ::= Exp3 "+" Exp4 ;
 
+ESub.       Exp3 ::= Exp3 "-" Exp4 ;
+
+EEq.        Exp2 ::= Exp2 "==" Exp3 ;
+
 EIf.        Exp ::= "if" Exp "then" Exp "else" Exp ;
 
 ELet.       Exp ::= "let" "{" LowerIdent "=" Exp "}" "in" Exp ;
