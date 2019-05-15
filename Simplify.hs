@@ -72,22 +72,24 @@ simplCons [] = P.ECon "Nil"
 simplCons (e:es) = P.EApp (P.EApp (P.ECon "Cons") e) (simplCons es)
 
 
+simplIf :: A.Exp -> P.Exp
+simplIf (A.EIf e1 e2 e3) = P.ECase (simpl e1) [b1, b2] where
+  b1 = simpl $ A.Branch (A.PCon (A.UpperIdent "True") []) e2
+  b2 = simpl $ A.Branch (A.PCon (A.UpperIdent "False") []) e3
+
 instance Simplable A.Exp P.Exp where
   simpl :: A.Exp -> P.Exp
   simpl e = case e of
-    A.EIf e1 e2 e3 -> P.EIf (simpl e1) (simpl e2) (simpl e3)
+    A.EIf e1 e2 e3 -> simplIf (A.EIf e1 e2 e3)   -- P.EIf (simpl e1) (simpl e2) (simpl e3)
     A.ELet id e1 e2 -> P.ELet (fetch id) (simpl e1) (simpl e2)
     A.ELam id e -> P.ELam (fetch id) (simpl e)
     A.EVar id -> P.EVar $ fetch id
     A.ELit (A.LInt n) -> P.ELit (P.LInt n)
-    --A.ELit (A.LBool (A.Boolean "True")) -> P.ELit (P.LBool True)
-    --A.ELit (A.LBool (A.Boolean "False")) -> P.ELit (P.LBool False)
-    --A.ELit (A.LBool (A.Boolean _)) -> error "wtf"
     A.EApp e1 e2 -> P.EApp (simpl e1) (simpl e2)
     A.EAdd e1 e2 -> P.EOp (simpl e1) P.Add (simpl e2)
     A.EMul e1 e2 -> P.EOp (simpl e1) P.Mul (simpl e2)
     A.ECon id -> P.ECon $ fetch id
-    A.ELst exps -> simplCons $ simpl exps -- P.ELst $ simpl exps
+    A.ELst exps -> simplCons $ simpl exps
     A.EEq e1 e2 -> P.EOp (simpl e1) P.Eq (simpl e2)
     A.ESub e1 e2 -> P.EOp (simpl e1) P.Sub (simpl e2)
     A.ECase e branches -> P.ECase (simpl e) (simpl branches)

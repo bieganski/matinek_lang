@@ -131,10 +131,6 @@ eval e = case e of
     rec newenv <- localVal (const newenv) $ (eval e1) >>= \d -> return (Map.insert x d env)
     localVal (const newenv) $ eval e2
   ELit (LInt n) -> return $ VInt n
-  EIf cond tr fl -> eval cond >>= \res ->
-    case res of tt -> eval tr
-                ff -> eval fl
-                t -> throwError $ "Boolean value expected! Got: " ++ (show t)
   EOp e1 op e2 -> do
     v1 <- eval e1
     v2 <- eval e2
@@ -144,9 +140,6 @@ eval e = case e of
     case Map.lookup cname venv of
       Nothing  -> throwError $ "Constructor " ++ cname ++ " does not exist!"
       Just val -> return val
-  ELst exps -> do
-    vals <- mapM eval exps
-    return $ lstToCons vals
   ECase e branches -> do
     v <- eval e
     _res <- mapM (uncurry unify) (zip branches (repeat v))

@@ -27,10 +27,8 @@ data Exp
   | ELam VName Exp
   | ELet VName Exp Exp
   | ELit Lit
-  | EIf Exp Exp Exp
   | EOp Exp Binop Exp
   | ECon ConstrName
-  | ELst [Exp]
   | ECase Exp [Branch]
   deriving (Show, Eq, Ord, Read)
 
