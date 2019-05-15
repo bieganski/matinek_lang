@@ -161,7 +161,17 @@ eval e = case e of
 
 evalMatch :: (Maybe ValEnv, Branch) -> Interpret Value
 evalMatch (Nothing, _) = throwError "evalMatch internal error"
-evalMatch (Just venv, Branch _ e) = localVal (const venv) (eval e)
+evalMatch (Just venv, Branch _ e) = localVal (Map.union venv) (eval e)
+
+
+
+
+saveJoin :: ValEnv -> ValEnv -> Interpret ValEnv
+saveJoin m1 m2 = do
+  let overlaps = Map.keys (Map.intersection m1 m2)
+  if  overlaps /= []
+    then throwError $ "overlapping keys: " ++ (show overlaps)
+    else return $ Map.union m1 m2
 
 
 
@@ -174,7 +184,9 @@ unifyConstr pats vals = if length pats /= length vals then return Nothing else d
   -- all of them should be proper
   if (elem Nothing res)
     then return Nothing
-    else return (Just (foldr (Map.union) Map.empty (map (fromJust) res))) -- TODO overlapping
+    else do
+      env <- foldM saveJoin Map.empty (map fromJust res)
+      return $ Just env
   
 
 --data Value
@@ -191,7 +203,6 @@ unify (Branch pat _) v = case pat of
   PVar x -> return $ Just $ Map.singleton x v
   PCon cname pats -> do
     venv <- askVal
-
     case v of
       VADT cname' vals -> if cname == cname' then unifyConstr pats vals else return Nothing
       VCon n (VADT cname' []) -> if cname /= cname' then return Nothing else do

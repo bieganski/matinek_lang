@@ -66,6 +66,12 @@ instance Simplable A.Binop P.Binop where
                         A.Eq  -> P.Eq
 -}
 
+
+simplCons :: [P.Exp] -> P.Exp
+simplCons [] = P.ECon "Nil"
+simplCons (e:es) = P.EApp (P.EApp (P.ECon "Cons") e) (simplCons es)
+
+
 instance Simplable A.Exp P.Exp where
   simpl :: A.Exp -> P.Exp
   simpl e = case e of
@@ -81,7 +87,7 @@ instance Simplable A.Exp P.Exp where
     A.EAdd e1 e2 -> P.EOp (simpl e1) P.Add (simpl e2)
     A.EMul e1 e2 -> P.EOp (simpl e1) P.Mul (simpl e2)
     A.ECon id -> P.ECon $ fetch id
-    A.ELst exps -> P.ELst $ simpl exps
+    A.ELst exps -> simplCons $ simpl exps -- P.ELst $ simpl exps
     A.EEq e1 e2 -> P.EOp (simpl e1) P.Eq (simpl e2)
     A.ESub e1 e2 -> P.EOp (simpl e1) P.Sub (simpl e2)
     A.ECase e branches -> P.ECase (simpl e) (simpl branches)
