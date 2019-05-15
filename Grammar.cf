@@ -31,13 +31,14 @@ separator Import ";" ;
 
 TVar.       Type1 ::= LowerIdent ; 
 
-TCon.       Type1 ::= UpperIdent [Type]; -- Int / Maybe a
+TCon.       Type1 ::= UpperIdent [Type] ; -- Nil / Maybe a
 
 TArr.       Type1 ::= Type2 "->" Type1 ;
 
 separator Type "" ;
 
 coercions Type 2 ;
+
 
 
 PVar.       Pat1 ::= LowerIdent ;
@@ -50,9 +51,11 @@ coercions Pat 1 ;
 separator Pat "" ;
 
 
+
 Branch.     Branch ::= Pat "->" Exp ;
 
 separator Branch ";" ;
+
 
 
 
@@ -114,51 +117,3 @@ separator nonempty Constr "|" ;
 
 LInt.       Lit ::= Integer ;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
---ENeg.        Exp5 ::= "-" Exp6 ;
-
---ENot.        Exp5 ::= "!" Exp6 ;
-
---ERel.        Exp2 ::= Exp2 RelOp Exp3 ;
-
---EAnd.        Exp1 ::= Exp2 "&&" Exp1 ;
-
--- EOr.         Exp ::= Exp1 "||" Exp ;
-
-
--- operators -----------------------------------------------
-
---Add.    Binop ::= "+" ;
-
---Sub.    Binop ::= "-" ;
-
---Mul.    Binop ::= "*" ;
-
---Eq.    Binop ::= "==" ;
-
-
--- Div.       MulOp ::= "/" ;
-
---Mod.       MulOp ::= "%" ;
-
---LT.       RelOp ::= "<" ;
-
---LE.        RelOp ::= "<=" ;
-
---GTH.       RelOp ::= ">" ;
-
---GE.        RelOp ::= ">=" ;
-
---NE.        RelOp ::= "!=" ;

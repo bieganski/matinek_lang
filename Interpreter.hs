@@ -286,8 +286,8 @@ handleImports (x:xs) = do
   local (const env) (handleImports xs)
 
 
-_builtins :: [FilePath]
-_builtins = ["./builtins/builtins.hs"]
+builtins :: [FilePath]
+builtins = ["./builtins/builtins.hs"]
 
 interpretCode :: String -> Interpret Env
 interpretCode code = do
@@ -305,7 +305,7 @@ env0 = (Map.empty, Map.empty)
 
 loadBuiltins :: IO Env
 loadBuiltins = do
-  res <- runInterpreter (handleImports (map Import _builtins)) env0
+  res <- runInterpreter (handleImports (map Import builtins)) env0
   case res of
     Right env -> return env
     Left s -> error $ "internal error: builitins"
