@@ -1,5 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+
 module Main where
 
 import Control.Monad.Reader
@@ -10,16 +11,9 @@ import Control.Monad.IO.Class
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
-import qualified LexGrammar as Lex
-import qualified ParGrammar as Par
-import qualified SkelGrammar as Skel
-import qualified PrintGrammar as Print
-import qualified AbsGrammar as Abs
-import qualified ErrM as Err
-
+import Data.Bifunctor (bimap)
 
 import ProgGrammar
-import Simplify
 
 intT, boolT :: Type
 intT = TCon "Int" []
@@ -84,7 +78,7 @@ occursCheck :: SubstAble a => TVar -> a -> Bool
 occursCheck tv substable = Set.member tv $ ftv substable
 
 unify ::  Type -> Type -> Infer Subst
-unify (TArr x1 y1) (TArr x2 y2) = do
+unify (TArr x1 y1) (TArr x2 y2) = do 
   s1 <- unify x1 x2
   s2 <- unify (apply s1 y1) (apply s1 y2)
   return $ compose s2 s1
@@ -101,20 +95,6 @@ bind tv t | occursCheck tv t = throwError "cannot unify"
           | TVar tv == t = return nullSubst
           | otherwise = return $ Subst $ Map.singleton tv t
 
-
-t1 = TArr (TVar (TV "a")) (TVar (TV "a"))
-t2 = TArr intT boolT
-
-
-s0 = NumVar {num = 0}
-
-runSubst :: Infer Subst -> Either String Subst
-runSubst comp = evalState (runExceptT comp) s0
-
---main :: IO ()
---main = do
---  let lol = runSubst $ unify t1 t2
---  putStrLn $ show lol
 
 
 -- instancjonuje znaleziony typ
@@ -151,7 +131,6 @@ opsT = Map.fromList [
 
 infer :: TypeEnv -> Exp -> Infer (Subst, Type)
 infer env (ELit (LInt _)) = return (nullSubst, intT)
-infer env (ELit (LBool _)) = return (nullSubst, boolT)
 infer env (EVar name) = lookupEnv env name
 infer env (ELam x e) = do
   xtvar <- fresh
@@ -175,13 +154,36 @@ infer env (EOp e1 op e2) = do
   (s2, t2) <- infer env e2
   ss <- unify (TArr t1 (TArr t2 newvar)) (opsT Map.! op)
   return (s1 `compose` s2 `compose` ss, apply ss newvar)
-infer env (EIf cond tt ff) = do
-  (s1, t1) <- infer env cond
-  (s2, t2) <- infer env tt
-  (s3, t3) <- infer env ff
-  s4 <- unify t1 boolT
-  s5 <- unify t2 t3
-  return (s5 `compose` s4 `compose` s3 `compose` s2 `compose` s1, apply s5 t2)
+infer env (ECon cname) = lookupEnv env cname
+infer env (ECase e branches) = do
+  (se, te) <- infer env e
+  let newenv = apply se env
+  (r:rs) <- mapM (flip inferBranch env) branches -- branches not empty (parser)
+  foldM foldBranches r rs
+
+foldBranches :: (Subst, Type) -> (Subst, Type) -> Infer (Subst, Type)
+foldBranches (s1, t1) (s2, t2) = do
+  ss <- unify t1 (apply s1 t2)
+  return (compose ss (compose s2 s1), apply ss t2)
+
+inferBranch :: Branch -> TypeEnv -> Infer (Subst, Type)
+inferBranch (Branch _ e) env = infer env e
+
 
 runInfer :: Infer (Subst, Type) -> Either String (Subst, Type)
 runInfer comp = evalState (runExceptT comp) s0
+
+
+t1 = TArr (TVar (TV "a")) (TVar (TV "a"))
+t2 = TArr intT boolT
+
+s0 = NumVar {num = 0}
+
+runSubst :: Infer Subst -> Either String Subst
+runSubst comp = evalState (runExceptT comp) s0
+
+
+main :: IO ()
+main = do
+  let lol = runSubst $ unify t1 t2
+  putStrLn $ show lol
