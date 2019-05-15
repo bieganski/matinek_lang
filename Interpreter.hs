@@ -15,6 +15,7 @@ import System.IO
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import Data.Maybe(fromJust)
 
 import qualified ParGrammar as Par
 import qualified ErrM as Err
@@ -131,8 +132,8 @@ eval e = case e of
     localVal (const newenv) $ eval e2
   ELit (LInt n) -> return $ VInt n
   EIf cond tr fl -> eval cond >>= \res ->
-    case res of VADT "True" [] -> eval tr
-                VADT "False" [] -> eval fl
+    case res of tt -> eval tr
+                ff -> eval fl
                 t -> throwError $ "Boolean value expected! Got: " ++ (show t)
   EOp e1 op e2 -> do
     v1 <- eval e1
@@ -146,12 +147,12 @@ eval e = case e of
   ELst exps -> do
     vals <- mapM eval exps
     return $ lstToCons vals
-  ECase e branches = do
+  ECase e branches -> do
     v <- eval e
     _res <- mapM (uncurry unify) (zip branches (repeat v))
     let res = zip _res branches
-    case filter ((\=Nothing) . fst) res of
-      [] -> throwError "Not exhausting pattern!"
+    case filter ((/=Nothing) . fst) res of
+      [] -> throwError "Couldn't match any pattern!"
       [match] -> evalMatch match
       (match:_) -> do
         liftIO $ putStrLn $ "warning: more than one matching, executing first one."
@@ -163,48 +164,44 @@ evalMatch (Nothing, _) = throwError "evalMatch internal error"
 evalMatch (Just venv, Branch _ e) = localVal (const venv) (eval e)
 
 
---  | VADT ConstrName [Value]
---  | VCon Int Value -- constructor value : arity, VADT
-
 
 unifyConstr :: [Pat] -> [Value] -> Interpret (Maybe ValEnv)
-unifyConstr [] [] = return Map.empty
+unifyConstr [] [] = return $ Just Map.empty
 unifyConstr [] _ = throwError $ "TODO czesciowa aplikacja"
-unifyConstr (p:pats) (v:vals)
+unifyConstr pats vals = if length pats /= length vals then return Nothing else do
+  let branches = map (flip Branch (EVar "2137")) pats
+  res <- mapM (uncurry unify) (zip branches vals)
+  -- all of them should be proper
+  if (elem Nothing res)
+    then return Nothing
+    else return (Just (foldr (Map.union) Map.empty (map (fromJust) res))) -- TODO overlapping
+  
+
+--data Value
+--  = VInt Integer
+--  | VClosure String Exp ValEnv
+--  | VADT ConstrName [Value]
+--  | VCon Int Value -- constructor value : arity, VADT
+--  | VErr String
 
 
-unify :: Branch -> Value -> -> Env -> Interpret (Maybe ValEnv)
-unify (Branch pat) v (venv, denv) = case pat of
-  PVar x -> return $ Just Map.singleton x v
-  PCon cname pats ->
-    case Map.lookup cname venv of
-      Nothing -> throwError $ "Constructor " ++ (show cname) ++ " does not exist!"
-      Just (VADT cname' []) -> case pats of
-        [] -> if cname \= cname' then return Nothing else return $ Just Map.empty
-        _ -> 
-      VCon n (VADT cname) -> case length paths of
-        n -> TODO
-        _ -> throwError "arity error: " ++ (show n) ++ "vs " ++ (show (length pats))
-      _ -> throwError "OOOOOOOOOOOOOO internal error"
-  PLit (Lit int) -> case v of
+
+unify :: Branch -> Value -> Interpret (Maybe ValEnv)
+unify (Branch pat _) v = case pat of
+  PVar x -> return $ Just $ Map.singleton x v
+  PCon cname pats -> do
+    venv <- askVal
+
+    case v of
+      VADT cname' vals -> if cname == cname' then unifyConstr pats vals else return Nothing
+      VCon n (VADT cname' []) -> if cname /= cname' then return Nothing else do
+        liftIO (putStrLn "warning: partial application")
+        return Nothing -- TODO
+  PLit (LInt int) -> case v of
     VInt int' -> if int == int' then return $ Just Map.empty else return Nothing
     _ -> throwError "Cannot unify literal with nonliteral!"
   PAny -> return $ Just Map.empty
 
-evalCase :: Exp -> Interpret Value
-
-{-
-eval :: Exp -> Env -> Value
-eval e env = case e of
-  EVar x -> maybe
-            (VErr $ "variable " ++ (show x) ++ " does not exist")
-            id
-            (Map.lookup s env)
-  (EApp e1 e2) env -> case eval e1 env of
-                        VClosure x e venv -> eval e ((Map.insert x (eval e2 env) venv) . fst)
-                        c@(VCon _ _ ) = 
-
--}
 
 applyClos :: Value -> Value -> Interpret Value
 applyClos (VClosure x e env) val = localVal (Map.insert x val) (eval e)
