@@ -91,11 +91,14 @@ coercions  Exp 7 ;
 
 
 
-TDecl.      Decl ::= LowerIdent "::" Type ;
+TDecl.          Decl ::= LowerIdent "::" Type ;
 
-DataDecl.      Decl ::= "data" UpperIdent [LowerIdent] "=" [Constr] ;
+DataDecl.       Decl ::= "data" UpperIdent [LowerIdent] "=" [Constr] ;
 
 AssignDecl.     Decl ::= LowerIdent "=" Exp ;
+
+-- at least 2 idents at left to differ from AssignDecl
+FunDecl.        Decl ::= LowerIdent LowerIdent [LowerIdent] "=" Exp ;
 
 terminator Decl ";" ;
 

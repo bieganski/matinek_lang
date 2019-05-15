@@ -80,21 +80,6 @@ lstToCons (v:vs) = VADT "Cons" [v, (lstToCons vs)]
 
 
 
-vid :: Value
-vid = VClosure "x" (EVar "x") Map.empty
-
-
--- var = e(var)
-{-
-evalFix :: Exp -> VName -> Maybe Value -> Interpret Value
-evalFix e var prevval = do
-  val <- localVal (Map.insert var vid) $ eval e
-  case prevval of
-    Nothing -> evalFix e var (Just ev)
-    Just prev -> if prev == val then return val else evalFix e var (Just val)
--}
-
-
 tt, ff :: Value
 tt = VADT "True" []
 ff = VADT "False" []
@@ -105,16 +90,6 @@ eval e = case e of
   EVar s -> do
     env <- askVal
     maybe (throwError ("variable " ++ (show s) ++ " does not exist")) return (Map.lookup s env)
-{-
-  EApp (ELam x e1) e2 -> eval e2 >>= \res -> localVal (Map.insert x res) (eval e1)
-  EApp c@(ECon cname) e -> do
-    cv <- eval c
-    case cv of
-      VCon 0 _ -> throwError "thats not applicative! (constructor arity)"
-      c@(VCon n vadt) -> do
-        ev <- eval e
-        enhanceVData c ev
--}
   EApp e1 e2 -> do
     lol <- ask
     e1v <- eval e1
@@ -157,15 +132,12 @@ evalMatch (Nothing, _) = throwError "evalMatch internal error"
 evalMatch (Just venv, Branch _ e) = localVal (Map.union venv) (eval e)
 
 
-
-
 saveJoin :: ValEnv -> ValEnv -> Interpret ValEnv
 saveJoin m1 m2 = do
   let overlaps = Map.keys (Map.intersection m1 m2)
   if  overlaps /= []
     then throwError $ "overlapping keys: " ++ (show overlaps)
     else return $ Map.union m1 m2
-
 
 
 unifyConstr :: [Pat] -> [Value] -> Interpret (Maybe ValEnv)
@@ -180,15 +152,6 @@ unifyConstr pats vals = if length pats /= length vals then return Nothing else d
     else do
       env <- foldM saveJoin Map.empty (map fromJust res)
       return $ Just env
-  
-
---data Value
---  = VInt Integer
---  | VClosure String Exp ValEnv
---  | VADT ConstrName [Value]
---  | VCon Int Value -- constructor value : arity, VADT
---  | VErr String
-
 
 
 unify :: Branch -> Value -> Interpret (Maybe ValEnv)
@@ -215,7 +178,6 @@ evalOp :: Binop -> Value -> Value -> Value
 evalOp Add (VInt v1) (VInt v2) = VInt $ v1 + v2
 evalOp Sub (VInt v1) (VInt v2) = VInt $ v1 - v2
 evalOp Mul (VInt v1) (VInt v2) = VInt $ v1 * v2
--- evalOp Eq  (VADT " v1) (VBool v2) = VADT res [] where res = if v1 == v2 then "True" else "False"
 evalOp Eq  (VInt v1) (VInt v2) = VADT res [] where res = if v1 == v2 then "True" else "False"
 
 
@@ -223,8 +185,6 @@ evalOp Eq  (VInt v1) (VInt v2) = VADT res [] where res = if v1 == v2 then "True"
 incArity :: Value -> Value
 incArity (VCon arity vadt) = VCon (arity + 1) vadt
 
--- TODO
--- typy: w tej funkcji pojawiają się problemy
 addDataConstr :: DataName -> [VName] -> Constr -> ValEnv -> ValEnv
 addDataConstr _ _ (Constr cname []) venv = case Map.lookup cname venv of
   Nothing -> Map.insert cname (VADT cname []) venv
@@ -281,10 +241,7 @@ evalDecls (d:ds) = case d
        when (elem x (Map.keys venv)) $ liftIO $ putStrLn $ "warning: overwriting " ++ (show x) ++ " variable."
        eval e >>= \ee -> localVal (Map.insert x ee) (evalDecls ds)
 
--- evalFix :: Exp -> VName -> Maybe Value -> Interpret Value
 
-
--- type Interpret a = ExceptT String (ReaderT (ValEnv, DataNameEnv) IO) a
 runInterpreter :: Interpret a -> Env -> IO (Either String a)
 runInterpreter comp env = runReaderT (runExceptT comp) env
 

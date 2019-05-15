@@ -38,7 +38,7 @@ instance Simplable A.Type P.Type where
   simpl t = case t of A.TVar (A.LowerIdent s) -> P.TVar $ P.TV s
                       A.TCon (A.UpperIdent s) types -> P.TCon s $ simpl types
                       A.TArr t1 t2 -> P.TArr (simpl t1) (simpl t2)
-
+                      
 
 instance Simplable A.Constr P.Constr where
   simpl :: A.Constr -> P.Constr
@@ -49,6 +49,7 @@ instance Simplable A.Decl P.Decl where
   simpl (A.DataDecl (A.UpperIdent dname) letters constrs) =
     P.DataDecl dname (fetch letters) (simpl constrs)
   simpl (A.AssignDecl (A.LowerIdent var) e) = P.AssignDecl var (simpl e)
+  simpl (A.FunDecl f x1 xs e) = simpl $ A.AssignDecl f (foldr A.ELam e (x1:xs))
 
 instance Simplable A.Import P.Import where
   simpl (A.Import fname) = P.Import fname
@@ -56,15 +57,6 @@ instance Simplable A.Import P.Import where
 instance Simplable A.Program P.Program where
   simpl :: A.Program -> P.Program
   simpl (A.Program imports decls) = P.Program (simpl imports) (simpl decls)
-
-{-
-instance Simplable A.Binop P.Binop where
-  simpl :: A.Binop -> P.Binop
-  simpl op = case op of A.Add -> P.Add
-                        A.Sub -> P.Sub
-                        A.Mul -> P.Mul
-                        A.Eq  -> P.Eq
--}
 
 
 simplCons :: [P.Exp] -> P.Exp
@@ -80,7 +72,7 @@ simplIf (A.EIf e1 e2 e3) = P.ECase (simpl e1) [b1, b2] where
 instance Simplable A.Exp P.Exp where
   simpl :: A.Exp -> P.Exp
   simpl e = case e of
-    A.EIf e1 e2 e3 -> simplIf (A.EIf e1 e2 e3)   -- P.EIf (simpl e1) (simpl e2) (simpl e3)
+    A.EIf e1 e2 e3 -> simplIf (A.EIf e1 e2 e3)
     A.ELet id e1 e2 -> P.ELet (fetch id) (simpl e1) (simpl e2)
     A.ELam id e -> P.ELam (fetch id) (simpl e)
     A.EVar id -> P.EVar $ fetch id
