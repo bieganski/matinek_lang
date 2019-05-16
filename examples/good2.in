@@ -1,0 +1,3 @@
+import "./examples/doimportu.ml" ;
+
+main = tajne + poufne ; 

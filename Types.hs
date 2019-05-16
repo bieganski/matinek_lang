@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
-module Main where
+module Types where
 
 import Control.Monad.Reader
 import Control.Monad.State
@@ -33,6 +33,16 @@ nullSubst = Subst Map.empty
 -- najpierw przykłada drugie potem pierwsze
 compose :: Subst -> Subst -> Subst
 compose s1@(Subst m1) s2@(Subst m2) = Subst $ Map.map (apply s1) m2 `Map.union` m1
+
+
+
+{-
+Rekonstrukcja typów jest zaimplementowana jako
+inferencja Hindley`a-Milner'a, wzorowana na implementacji z linka
+http://dev.stephendiehl.com/fun/006_hindley_milner.html,
+z inferencją dostosowaną do algebraicznych, polimorficznych data-typów
+i wersji wyrażeń z pliku ProgGrammar.hs
+-}
 
 
 class SubstAble a where
@@ -183,7 +193,11 @@ runSubst :: Infer Subst -> Either String Subst
 runSubst comp = evalState (runExceptT comp) s0
 
 
+doInfer e = runInfer (infer (TypeEnv Map.empty) e)
+
+{-
 main :: IO ()
 main = do
-  let lol = runSubst $ unify t1 t2
-  putStrLn $ show lol
+  let s = runSubst $ unify t1 t2
+  putStrLn $ show s
+-}

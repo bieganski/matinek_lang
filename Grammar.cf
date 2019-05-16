@@ -54,7 +54,7 @@ separator Pat "" ;
 
 Branch.     Branch ::= Pat "->" Exp ;
 
-separator nonempty Branch ";" ;
+terminator nonempty Branch ";" ;
 
 
 
@@ -105,7 +105,7 @@ FunDecl.        Decl ::= LowerIdent LowerIdent [LowerIdent] "=" Exp ;
 
 terminator Decl ";" ;
 
-
+coercions Decl 1 ;
 
 
 Constr.     Constr ::= UpperIdent [Type] ;

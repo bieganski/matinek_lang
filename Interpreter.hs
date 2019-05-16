@@ -23,6 +23,8 @@ import qualified ErrM as Err
 import ProgGrammar
 import Simplify
 
+-- TODO - do zrobienia
+-- import Types (doInfer)
 
 type ValEnv = Map.Map VName Value
 type DataNameEnv = Map.Map ConstrName DataName
@@ -72,12 +74,10 @@ enhanceVData (VCon n (VADT cname vals)) val = case n of
   _ -> return $ VCon (n - 1) (VADT cname (append val vals))
 
 
-
 -- desugaring
 lstToCons :: [Value] -> Value
 lstToCons [] = VADT "Nil" []
 lstToCons (v:vs) = VADT "Cons" [v, (lstToCons vs)]
-
 
 
 tt, ff :: Value
@@ -240,8 +240,7 @@ evalDecls (d:ds) = case d
        venv <- askVal
        when (elem x (Map.keys venv)) $ liftIO $ putStrLn $ "warning: overwriting " ++ (show x) ++ " variable."
        eval e >>= \ee -> localVal (Map.insert x ee) (evalDecls ds)
-
-
+       
 runInterpreter :: Interpret a -> Env -> IO (Either String a)
 runInterpreter comp env = runReaderT (runExceptT comp) env
 
@@ -254,16 +253,17 @@ printListSugarNonEmpty (VADT "Cons" [v, vs]) first = do
   putStr $ (show v) ++ ","
   printListSugarNonEmpty vs False
 
+
 printListSugar :: Value -> IO ()
 printListSugar (VADT "Nil" []) = putStrLn "[]"
 printListSugar lst@(VADT "Cons" [v, vs]) = printListSugarNonEmpty lst True
+-- printListSugar v = putStrLn $ show v
 
 printMain :: ValEnv -> IO ()
 printMain venv = case Map.lookup "main" venv of
   Nothing -> putStrLn "Cannot find \"main\" expression!"
   Just val -> case val of lst@(VADT "Cons" _) -> printListSugar val
                           _ -> putStrLn $ show val
-
 
 
 loadModule :: Import -> IO String
@@ -295,7 +295,7 @@ interpretCode code = do
   case errTree of Err.Bad s -> throwError $ s
                   Err.Ok tree -> do
                     let Program imports _decls = simplify tree
-                    -- putStrLn $ show $ tree
+                    -- liftIO $ putStrLn $ show $ tree
                     postimportenv <- handleImports imports
                     let (decls, env) = preprocessDataDecls (_decls, postimportenv)
                     local (const env) (evalDecls decls)
