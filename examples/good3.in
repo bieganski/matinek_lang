@@ -2,4 +2,10 @@ mul = \x -> 2 * x ;
 
 add x y = x + y ;
 
-main = mul (add 1 2) 3 ;
+v = 5 ;
+
+vv = mul v ;
+
+vvv = add vv vv;
+
+main = vvv ;
