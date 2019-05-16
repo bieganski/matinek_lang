@@ -1,7 +1,7 @@
 all:
-	happy -gca ParGrammar.y
-	alex -g LexGrammar.x
-	ghc --make TestGrammar.hs -o TestGrammar
+	# happy -gca ParGrammar.y
+	# alex -g LexGrammar.x
+	# ghc --make TestGrammar.hs -o TestGrammar
 	ghc Interpreter.hs -o interpreter
 
 clean:
