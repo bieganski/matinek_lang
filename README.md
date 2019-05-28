@@ -25,5 +25,3 @@ Do zrobienia zostało mi podpięcie typechecku, póki co jest typowanie dynamicz
 W paczce znajdują się pliki wynikowe programu bnfc, można natomiast
 wygenerować je ręcznie.
 
-Bardzo proszę o wycenienie, na ile punktów ocenia Pani obecne rozwiązanie oraz ile
-warte będzie z dopiętą rekonstrukcją typów.
