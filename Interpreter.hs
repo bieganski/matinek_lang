@@ -25,6 +25,7 @@ import Simplify
 
 import Types
 
+import ADTProcessing
 
 
 type ValEnv = Map.Map VName Value
@@ -84,14 +85,6 @@ lstToCons (v:vs) = VADT "Cons" [v, (lstToCons vs)]
 tt, ff :: Value
 tt = VADT "True" []
 ff = VADT "False" []
-
-evalWithTypeCheck :: Exp -> TypeEnv -> Interpret Value
-evalWithTypeCheck e tenv = do
-  case doInfer e tenv of
-    Left err -> throwError err
-    Right (s, t) -> do
-      liftIO $ putStrLn $ show (s, t)
-      eval e
 
 
 eval :: Exp -> Interpret Value
@@ -188,54 +181,6 @@ evalOp Add (VInt v1) (VInt v2) = VInt $ v1 + v2
 evalOp Sub (VInt v1) (VInt v2) = VInt $ v1 - v2
 evalOp Mul (VInt v1) (VInt v2) = VInt $ v1 * v2
 evalOp Eq  (VInt v1) (VInt v2) = VADT res [] where res = if v1 == v2 then "True" else "False"
-
-
-
-incArity :: Value -> Value
-incArity (VCon arity vadt) = VCon (arity + 1) vadt
-
-addDataConstr :: DataName -> [VName] -> Constr -> ValEnv -> ValEnv
-addDataConstr _ _ (Constr cname []) venv = case Map.lookup cname venv of
-  Nothing -> Map.insert cname (VADT cname []) venv
-  Just _ -> venv
-addDataConstr dname letters (Constr cname (t:ts)) venv = addDataConstr dname letters (Constr cname ts) venv' where
-  venv' = Map.insert cname cval venv where
-    cval = incArity $ Map.findWithDefault (VCon 0 (VADT cname [])) cname venv
-
-
-addDataVals :: Decl -> ValEnv -> ValEnv
-addDataVals (DataDecl dname letters []) venv = venv
-addDataVals (DataDecl dname letters (con:cons)) venv = if constrExists con venv
-  then error $ "Constructor name (" ++ (show con) ++ ") duplication!"
-  else addDataVals (DataDecl dname letters cons) venv' where
-    venv' = addDataConstr dname letters con venv
-
-_cname :: Constr -> ConstrName
-_cname (Constr cname _) = cname
-
-dataExists :: DataName -> DataNameEnv -> Bool
-dataExists dname denv = elem dname $ Map.elems denv
-
-constrExists :: Constr -> ValEnv -> Bool
-constrExists (Constr cname _) venv = elem cname $ Map.keys venv
-
-newData :: Decl -> Env -> TypeEnv -> Either String (Env, TypeEnv)
-newData d@(DataDecl dname letters constrs) (venv, denv) tenv = if dataExists dname denv
-  then error "Data name duplication!"
-  else (venv', denv') where
-    denv' = Map.union denv $ Map.fromList $ zip (map _cname constrs) (repeat dname)
-    venv' = addDataVals d venv
-
--- There are seperate monads for typechecking and program interpreting,
--- but parsing data declarations changes both variable and type environment,
--- thus I decided to preprocess declarations, parse data first and generate
--- enhanced environments, passed to runInterpret
--- return: Non-data declarations (we cannot just omit them in interpreting,
--- for avoiding nested data declarations) and enhanced env.
-preprocessDataDecls :: ([Decl], Env) -> ([Decl], Env)
-preprocessDataDecls ([], env) = ([], env)
-preprocessDataDecls ( (d@(DataDecl _ _ _):ds), env ) = preprocessDataDecls (ds, newData d env)
-preprocessDataDecls ((d:ds), env) = ((d:ds'), env') where (ds', env') = preprocessDataDecls (ds, env)
 
 
 
