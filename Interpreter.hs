@@ -219,8 +219,8 @@ dataExists dname denv = elem dname $ Map.elems denv
 constrExists :: Constr -> ValEnv -> Bool
 constrExists (Constr cname _) venv = elem cname $ Map.keys venv
 
-newData :: Decl -> Env -> Env
-newData d@(DataDecl dname letters constrs) (venv, denv) = if dataExists dname denv
+newData :: Decl -> Env -> TypeEnv -> Either String (Env, TypeEnv)
+newData d@(DataDecl dname letters constrs) (venv, denv) tenv = if dataExists dname denv
   then error "Data name duplication!"
   else (venv', denv') where
     denv' = Map.union denv $ Map.fromList $ zip (map _cname constrs) (repeat dname)
@@ -236,6 +236,7 @@ preprocessDataDecls :: ([Decl], Env) -> ([Decl], Env)
 preprocessDataDecls ([], env) = ([], env)
 preprocessDataDecls ( (d@(DataDecl _ _ _):ds), env ) = preprocessDataDecls (ds, newData d env)
 preprocessDataDecls ((d:ds), env) = ((d:ds'), env') where (ds', env') = preprocessDataDecls (ds, env)
+
 
 
 t0 = TypeEnv Map.empty
@@ -301,10 +302,11 @@ builtins :: [FilePath]
 builtins = [] -- ["./builtins/builtins.hs"]
 
 
+
 typeCheck :: TypeEnv -> [Decl] -> Either String TypeEnv
 typeCheck t [] = Right t
 typeCheck tenv (d:ds) = case d of
-  --DataDecl dname freeletters constrs -> undefined
+  -- DataDecl dname freeletters constrs -> undefined
   AssignDecl x e -> case doInfer e tenv of
     Left err -> Left err
     Right (s, t) -> typeCheck newtenv ds where newtenv = addScheme x sch tenv
