@@ -19,11 +19,9 @@ intT, boolT :: Type
 intT = TCon "Int" []
 boolT = TCon "Bool" []
 
-data Scheme = Forall [TVar] Type
+data Scheme = Forall [TVar] Type deriving Show
 
-data TypeEnv = TypeEnv (
-  Map.Map VName Scheme
-  )
+data TypeEnv = TypeEnv (Map.Map VName Scheme) deriving Show
 
 data Subst = Subst (Map.Map TVar Type) deriving (Eq, Show)
 
@@ -192,8 +190,8 @@ s0 = NumVar {num = 0}
 runSubst :: Infer Subst -> Either String Subst
 runSubst comp = evalState (runExceptT comp) s0
 
-
-doInfer e = runInfer (infer (TypeEnv Map.empty) e)
+doInfer :: Exp -> TypeEnv -> Either String (Subst, Type)
+doInfer e tenv = runInfer (infer tenv e)
 
 {-
 main :: IO ()

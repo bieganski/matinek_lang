@@ -23,8 +23,9 @@ import qualified ErrM as Err
 import ProgGrammar
 import Simplify
 
--- TODO - do zrobienia
--- import Types (doInfer)
+import Types
+
+
 
 type ValEnv = Map.Map VName Value
 type DataNameEnv = Map.Map ConstrName DataName
@@ -84,6 +85,14 @@ tt, ff :: Value
 tt = VADT "True" []
 ff = VADT "False" []
 
+evalWithTypeCheck :: Exp -> TypeEnv -> Interpret Value
+evalWithTypeCheck e tenv = do
+  case doInfer e tenv of
+    Left err -> throwError err
+    Right (s, t) -> do
+      liftIO $ putStrLn $ show (s, t)
+      eval e
+
 
 eval :: Exp -> Interpret Value
 eval e = case e of
@@ -117,7 +126,7 @@ eval e = case e of
       Just val -> return val
   ECase e branches -> do
     v <- eval e
-    _res <- mapM (uncurry unify) (zip branches (repeat v))
+    _res <- mapM (uncurry unifyADT) (zip branches (repeat v))
     let res = zip _res branches
     case filter ((/=Nothing) . fst) res of
       [] -> throwError "Couldn't match any pattern!"
@@ -145,7 +154,7 @@ unifyConstr [] [] = return $ Just Map.empty
 unifyConstr [] _ = throwError $ "TODO czesciowa aplikacja"
 unifyConstr pats vals = if length pats /= length vals then return Nothing else do
   let branches = map (flip Branch (EVar "2137")) pats
-  res <- mapM (uncurry unify) (zip branches vals)
+  res <- mapM (uncurry unifyADT) (zip branches vals)
   -- all of them should be proper
   if (elem Nothing res)
     then return Nothing
@@ -154,8 +163,8 @@ unifyConstr pats vals = if length pats /= length vals then return Nothing else d
       return $ Just env
 
 
-unify :: Branch -> Value -> Interpret (Maybe ValEnv)
-unify (Branch pat _) v = case pat of
+unifyADT :: Branch -> Value -> Interpret (Maybe ValEnv)
+unifyADT (Branch pat _) v = case pat of
   PVar x -> return $ Just $ Map.singleton x v
   PCon cname pats -> do
     venv <- askVal
@@ -229,6 +238,8 @@ preprocessDataDecls ( (d@(DataDecl _ _ _):ds), env ) = preprocessDataDecls (ds, 
 preprocessDataDecls ((d:ds), env) = ((d:ds'), env') where (ds', env') = preprocessDataDecls (ds, env)
 
 
+t0 = TypeEnv Map.empty
+
 evalDecls :: [Decl] -> Interpret Env
 evalDecls [] = do
   env <- ask
@@ -287,7 +298,19 @@ handleImports (x:xs) = do
 
 
 builtins :: [FilePath]
-builtins = ["./builtins/builtins.hs"]
+builtins = [] -- ["./builtins/builtins.hs"]
+
+
+typeCheck :: TypeEnv -> [Decl] -> Either String TypeEnv
+typeCheck t [] = Right t
+typeCheck tenv (d:ds) = case d of
+  --DataDecl dname freeletters constrs -> undefined
+  AssignDecl x e -> case doInfer e tenv of
+    Left err -> Left err
+    Right (s, t) -> typeCheck newtenv ds where newtenv = addScheme x sch tenv
+                                                 where sch = generalize tenv t
+  _ -> Left "co tu sie stalo?"                                                 
+
 
 interpretCode :: String -> Interpret Env
 interpretCode code = do
@@ -297,6 +320,9 @@ interpretCode code = do
                     let Program imports _decls = simplify tree
                     -- liftIO $ putStrLn $ show $ tree
                     postimportenv <- handleImports imports
+                    case typeCheck t0 _decls of
+                      Left err -> throwError err
+                      Right tenv -> liftIO $ putStrLn $ "Ostateczny typeenv: " ++ show tenv
                     let (decls, env) = preprocessDataDecls (_decls, postimportenv)
                     local (const env) (evalDecls decls)
                     
@@ -311,6 +337,8 @@ loadBuiltins = do
     Left s -> error $ "internal error: builitins"
 
 
+
+-- TODO : wczytywanie i typowanie builtinsów
 main :: IO ()
 main = do
   code <- getContents
