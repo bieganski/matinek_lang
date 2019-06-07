@@ -16,8 +16,8 @@ import Data.Bifunctor (bimap)
 import ProgGrammar
 
 intT, boolT :: Type
-intT = TCon "Int" []
-boolT = TCon "Bool" []
+intT = TADT "Int" []
+boolT = TADT "Bool" []
 
 data Scheme = Forall [TVar] Type deriving Show
 
@@ -49,10 +49,10 @@ class SubstAble a where
 
 instance SubstAble Type where
   ftv (TVar name) = Set.singleton name
-  ftv (TCon _ types) = foldr Set.union Set.empty (map ftv types)
+  ftv (TADT _ types) = foldr Set.union Set.empty (map ftv types)
   ftv (TArr t1 t2) = Set.union (ftv t1) (ftv t2)
   apply (Subst s) (TVar name) = Map.findWithDefault (TVar name) name s
-  apply s (TCon con lst) = TCon con $ apply s lst
+  apply s (TADT con lst) = TCon con $ apply s lst
   apply s (TArr t1 t2) = TArr (apply s t1) (apply s t2)
   
 instance SubstAble Scheme where
@@ -92,10 +92,10 @@ unify (TArr x1 y1) (TArr x2 y2) = do
   return $ compose s2 s1
 unify (TVar tv) t = bind tv t
 unify t (TVar tv) = bind tv t
-unify (TCon a []) (TCon b []) = return nullSubst
-unify (TCon a (t:ts)) (TCon b (tt:tts)) = do
+unify (TADT a []) (TCon b []) = return nullSubst
+unify (TADT a (t:ts)) (TCon b (tt:tts)) = do
   first <- unify t tt
-  rest <- unify (TCon a ts) (TCon b tts)
+  rest <- unify (TADT a ts) (TCon b tts)
   if a == b then return (compose first rest) else throwError "cannot unify"
 
 bind :: TVar -> Type -> Infer Subst
