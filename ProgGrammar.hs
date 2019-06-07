@@ -63,7 +63,7 @@ newtype TVar = TV String
 
 data Type
   = TVar TVar
-  | TCon String [Type]
+  | TADT String [Type]
   | TArr Type Type
    deriving (Eq, Ord, Read)
 
