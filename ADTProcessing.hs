@@ -47,10 +47,12 @@ addConstr e@(venv, denv, tenv) c@(Constr cname types) dname sch = do
 
 parseConstrs :: ADTEnv -> Decl -> Scheme -> DeclProcess ADTEnv
 parseConstrs env (DataDecl dname _ []) _ = return env
-parseConstrs env (DataDecl dname _ (con:cons)) sch = do
+parseConstrs env (DataDecl dname letters (con:cons)) sch = do
   if constrExists con env
     then throwError $ "Constructor name duplication! (" ++ (show con) ++ ")"
-    else addConstr env con dname sch
+    else do
+    env' <- addConstr env con dname sch
+    local (const env') parseConstrs env' (DataDecl dname letters cons) sch
 
 
 joinTypeScheme :: Type -> Scheme -> Scheme

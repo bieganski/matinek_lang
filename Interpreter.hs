@@ -250,7 +250,7 @@ typeCheck tenv (d:ds) = case d of
 filterDecls :: [Decl] -> [Decl]
 filterDecls ((DataDecl _ _ _):ds) = filterDecls ds
 filterDecls (d:ds) = d:(filterDecls ds)
-
+filterDecls [] = []
 
 --TODO
                     -- liftIO $ putStrLn $ show $ tree
