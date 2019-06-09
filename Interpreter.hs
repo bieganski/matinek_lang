@@ -25,14 +25,7 @@ import Simplify
 
 import Types
 
-import ADTProcessing as ADT
-
-
-type ValEnv = Map.Map VName Value
-type DataNameEnv = Map.Map ConstrName DataName
-
-type Env = (ValEnv, DataNameEnv)
-
+import ADTProcessing
 
 
 type Interpret a = ExceptT String (ReaderT Env IO) a
@@ -255,7 +248,7 @@ typeCheck tenv (d:ds) = case d of
 
 -- throws out data decls
 filterDecls :: [Decl] -> [Decl]
-filterDecls ((DataDecl _ _):ds) = filterDecls ds
+filterDecls ((DataDecl _ _ _):ds) = filterDecls ds
 filterDecls (d:ds) = d:(filterDecls ds)
 
 
@@ -268,10 +261,10 @@ interpretCode code = do
   case errTree of Err.Bad s -> throwError $ s
                   Err.Ok tree -> do
                     let Program imports _decls = simplify tree
-                    case ADT.runCreateEnv (env0, t0) _decls of
-                      Left err -> liftIO $ putStrLn err
+                    case runCreateEnv (env0, t0) _decls of
+                      Left err -> throwError err
                       Right e@((venv, denv), tenv) -> do
-                        liftIO $ putStrLn e
+                        liftIO $ putStrLn $ show e
                         let decls = filterDecls _decls
                         case typeCheck tenv decls of
                           Left err -> throwError err

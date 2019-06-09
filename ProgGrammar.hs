@@ -3,13 +3,21 @@ module ProgGrammar where
 
 import Data.Map as Map
 
+type ConstrName = String
+type VName = String
+type DataName = String
+
+type DataNameEnv = Map.Map ConstrName DataName
+
+type ValEnv = Map.Map VName Value
+
+type Env = (ValEnv, DataNameEnv)
+
+
+
 data Program = Program [Import] [Decl]
   deriving (Eq, Ord, Show, Read)
 
-
-type VName = String
-type DataName = String
-type ConstrName = String
 
 data Decl
   = TDecl VName Type
@@ -33,7 +41,6 @@ data Exp
   | ECase Exp [Branch]
   deriving (Show, Eq, Ord, Read)
 
-type ValEnv = Map.Map VName Value
 
 data Value
   = VInt Integer

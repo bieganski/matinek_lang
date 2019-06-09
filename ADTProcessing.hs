@@ -8,15 +8,9 @@ import qualified Data.Set as Set
 import Types
 import ProgGrammar
 
--- type ConstrName = String
--- type VName = String
--- type DataName = String
-
--- type ValEnv = Map.Map VName Value
-type DataNameEnv = Map.Map ConstrName DataName
-type TypesEnv = Map.Map VName Scheme -- there also exists TypeEnv data,
-  -- here we use pure map for convenience
-
+-- there also exists TypeEnv data,
+-- here we use pure map for convenience
+type TypesEnv = Map.Map VName Scheme 
 type ADTEnv = (ValEnv, DataNameEnv, TypesEnv)
 
 type DeclProcess = ExceptT String (Reader ADTEnv)
@@ -91,7 +85,6 @@ newData d@(DataDecl dname letters constrs) e = do
     else parseConstrs e d sch where sch = createADTScheme dname letters
   
   
-
 -- There are seperate monads for typechecking and program interpreting,
 -- but parsing data declarations changes both variable and type environment,
 -- thus I decided to preprocess declarations, parse data first and generate
@@ -105,8 +98,6 @@ preprocessDataDecls env (d@(DataDecl _ _ _):ds) = do
   preprocessDataDecls newenv ds
 preprocessDataDecls env (_:ds) = preprocessDataDecls env ds
 
-
-type Env = (ValEnv, DataNameEnv)
 
 createEnv :: ADTEnv -> [Decl] -> DeclProcess (Env, TypeEnv)
 createEnv env ds = do
