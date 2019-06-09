@@ -154,8 +154,10 @@ infer env (EApp e1 e2) = do
   newvar <- fresh
   (s1, t1) <- infer env e1
   (s2, t2) <- infer (apply s1 env) e2
-  ss <- unify (apply s2 t1) (TArr t2 newvar)
-  return (compose ss (compose s2 s1), apply ss newvar)
+  case t1 of TArr _ _ -> do
+               ss <- unify (apply s2 t1) (TArr t2 newvar)
+               return (ss `compose` s2 `compose` s1, apply ss newvar)
+             _ -> throwError $ (show t1) ++ " is not applicable!"
 infer env (ELet x e1 e2) = do
   (s1, t1) <- infer env e1
   let xsch = generalize (apply s1 env) t1

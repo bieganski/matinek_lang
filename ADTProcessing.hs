@@ -63,7 +63,7 @@ joinTypeScheme t1 (Forall vars t2) = Forall vars (TArr t1 t2)
 validateJoined :: Scheme -> DeclProcess ()
 validateJoined (Forall vars t) = do
   let frees = Set.toList $ ftv t
-  when (any (flip notElem vars) frees) (throwError "type error: not declared type variable used")
+  when (any (flip notElem vars) frees) (throwError "not declared type variable used")
   return ()
 
 vFun :: (ValEnv -> a) -> ADTEnv -> a
