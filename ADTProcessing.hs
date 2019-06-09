@@ -104,15 +104,17 @@ preprocessDataDecls env d@((DataDecl _ _ _):ds) = do
 preprocessDataDecls env _:ds = preprocessDataDecls env ds
 
 
-
-
-handleSchemesMap :: [Scheme] -> Scheme
-
-
 type Env = (ValEnv, DataNameEnv)
 
 createEnv :: ADTEnv -> [Decl] -> DeclProcess (Env, TypeEnv)
 createEnv env, ds = do
   (venv, denv, tenv) <- preprocessDataDecls env ds
-  tenv <- handleSchemesMap schemes
-  return ((venv, denv), tenv)
+  return ((venv, denv), (TypeEnv tenv))
+
+
+runDeclProcess :: DeclProcess a -> (Env, TypeEnv) -> Either String a
+runDeclProcess comp -> ((venv, denv), TypeEnv tenv) = runReader (runExceptT comp) (venv, denv, tenv)
+
+
+runCreateEnv :: (Env, TypeEnv) -> [Decl] -> Either String (Env, TypeEnv)
+runCreateEnv e@((venv, denv), TypeEnv tenv) decls = runDeclProcess (createEnv (venv, denv, tenv) decls) e

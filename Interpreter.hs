@@ -259,19 +259,30 @@ typeCheck tenv (d:ds) = case d of
   _ -> Left "co tu sie stalo?"                                                 
 
 
+-- throw out data decls
+filterDecls :: [Decl] -> [Decl]
+filterDecls (DataDecl _ _):ds = filterDecls ds
+filterDecls d:ds = d:(filterDecls ds)
+
+
+--TODO
+                    -- liftIO $ putStrLn $ show $ tree
+                    -- postimportenv <- handleImports imports
 interpretCode :: String -> Interpret Env
 interpretCode code = do
   let errTree = Par.pProgram $ Par.myLexer code
   case errTree of Err.Bad s -> throwError $ s
                   Err.Ok tree -> do
                     let Program imports _decls = simplify tree
-                    -- liftIO $ putStrLn $ show $ tree
-                    postimportenv <- handleImports imports
-                    case typeCheck t0 _decls of
-                      Left err -> throwError err
-                      Right tenv -> liftIO $ putStrLn $ "Ostateczny typeenv: " ++ show tenv
-                    let (decls, env) = preprocessDataDecls (_decls, postimportenv)
-                    local (const env) (evalDecls decls)
+                    case runCreateEnv (env0, t0) _decls of
+                      Left err -> liftIO $ putStrLn err
+                      Right e@((venv, denv), tenv) -> do
+                        liftIO $ putStrLn e
+                        let decls = filterDecls _decls
+                        case typeCheck tenv decls of
+                          Left err -> throwError err
+                          Right tenv' -> liftIO $ putStrLn $ "Ostateczny typeenv: " ++ show tenv'
+                          local (const (venv, denv)) (evalDecls decls)
                     
 
 env0 = (Map.empty, Map.empty)
