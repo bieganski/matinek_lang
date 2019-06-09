@@ -92,14 +92,19 @@ unify (TArr x1 y1) (TArr x2 y2) = do
   return $ compose s2 s1
 unify (TVar tv) t = bind tv t
 unify t (TVar tv) = bind tv t
-unify (TADT a []) (TADT b []) = return nullSubst
-unify (TADT a (t:ts)) (TADT b (tt:tts)) = do
+unify (TADT a []) (TADT b []) = if a == b
+  then return nullSubst
+  else throwError $ "cannot unify " ++ (show a) ++ " and " ++ (show b)
+unify (TADT a (t:ts)) (TADT b (tt:tts)) = if a /= b
+  then throwError $ "cannot unify " ++ (show a) ++ " and " ++ (show b)
+  else do
   first <- unify t tt
-  rest <- unify (TADT a ts) (TADT b tts)
-  if a == b then return (compose first rest) else throwError "cannot unify"
+  rest <- unify (TADT a (apply first ts)) (TADT b (apply first tts))
+  return rest
+unify t1 t2 = throwError $ (show t1) ++ " |||| " ++ (show t2)
 
 bind :: TVar -> Type -> Infer Subst
-bind tv t | occursCheck tv t = throwError "cannot unify"
+bind tv t | occursCheck tv t = throwError $ "cannot unify " ++ (show tv) ++ " and " ++ (show t)
           | TVar tv == t = return nullSubst
           | otherwise = return $ Subst $ Map.singleton tv t
 
@@ -109,7 +114,7 @@ bind tv t | occursCheck tv t = throwError "cannot unify"
 lookupEnv :: TypeEnv -> VName -> Infer (Subst, Type)
 lookupEnv (TypeEnv env) x = do
   case Map.lookup x env of
-    Nothing -> throwError "cannot find type variable"
+    Nothing -> throwError $ "cannot find type variable " ++ (show x)
     Just s  -> do t <- instantiate s
                   return (nullSubst, t)
 
@@ -178,8 +183,8 @@ inferBranch :: Branch -> TypeEnv -> Infer (Subst, Type)
 inferBranch (Branch _ e) env = infer env e
 
 
-runInfer :: Infer (Subst, Type) -> Either String (Subst, Type)
-runInfer comp = evalState (runExceptT comp) s0
+runInfer :: NumVar -> Infer (Subst, Type) -> (Either String (Subst, Type), NumVar)
+runInfer s comp = runState (runExceptT comp) s
 
 
 t1 = TArr (TVar (TV "a")) (TVar (TV "a"))
@@ -187,11 +192,11 @@ t2 = TArr intT boolT
 
 s0 = NumVar {num = 0}
 
-runSubst :: Infer Subst -> Either String Subst
-runSubst comp = evalState (runExceptT comp) s0
+--runSubst :: Infer Subst -> Either String Subst
+--runSubst comp = evalState (runExceptT comp) s0
 
-doInfer :: Exp -> TypeEnv -> Either String (Subst, Type)
-doInfer e tenv = runInfer (infer tenv e)
+doInfer :: NumVar -> Exp -> TypeEnv -> (Either String (Subst, Type), NumVar)
+doInfer s e tenv = runInfer s (infer tenv e)
 
 {-
 main :: IO ()

@@ -234,16 +234,14 @@ builtins :: [FilePath]
 builtins = [] -- ["./builtins/builtins.hs"]
 
 
-
-typeCheck :: TypeEnv -> [Decl] -> Either String TypeEnv
-typeCheck t [] = Right t
-typeCheck tenv (d:ds) = case d of
+typeCheck :: NumVar -> TypeEnv -> [Decl] -> Either String TypeEnv
+typeCheck _ t [] = Right t
+typeCheck ss tenv (d:ds) = case d of
   -- DataDecl dname freeletters constrs -> undefined
-  AssignDecl x e -> case doInfer e tenv of
-    Left err -> Left err
-    Right (s, t) -> typeCheck newtenv ds where newtenv = addScheme x sch tenv
-                                                 where sch = generalize tenv t
-  _ -> Left "co tu sie stalo?"                                                 
+  AssignDecl x e -> case doInfer ss e tenv of
+    (Left err, _) -> Left err
+    (Right (sub, t), s) -> typeCheck s newtenv ds where newtenv = addScheme x (generalize tenv t) tenv
+  _ -> Left "next GHC bug"                                                 
 
 
 -- throws out data decls
@@ -262,12 +260,12 @@ interpretCode code = do
                   Err.Ok tree -> do
                     let Program imports _decls = simplify tree
                     case runCreateEnv (env0, t0) _decls of
-                      Left err -> throwError err
+                      Left err -> throwError $ "Static error:" ++ err
                       Right e@((venv, denv), tenv) -> do
                         liftIO $ putStrLn $ show e
                         let decls = filterDecls _decls
-                        case typeCheck tenv decls of
-                          Left err -> throwError err
+                        case typeCheck s0 tenv decls of
+                          Left err -> throwError $ "Typecheck error:" ++ err
                           Right tenv' -> liftIO $ putStrLn $ "Ostateczny typeenv: " ++ show tenv'
                         local (const (venv, denv)) (evalDecls decls)
                     
@@ -291,4 +289,4 @@ main = do
   res <- runInterpreter (interpretCode code) envbuiltins
   case res of
     Right (venv, _) -> printMain venv
-    Left s -> putStrLn $ "Interpreter error: " ++ s
+    Left s -> putStrLn s

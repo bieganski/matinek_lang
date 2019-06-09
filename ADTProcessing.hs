@@ -23,7 +23,7 @@ constrExists (Constr cname _) env = elem cname $ tFun Map.keys env
 
 
 incArity :: Value -> Value
-incArity v@(VADT _ []) = (VCon 0 v)
+incArity v@(VADT _ []) = (VCon 1 v)
 incArity (VADT _ _) = error "must be GHC error to that happen"
 incArity (VCon arity vadt) = VCon (arity + 1) vadt
 
