@@ -1,6 +1,7 @@
 
 module ProgGrammar where
 
+import Data.Map as Map
 
 data Program = Program [Import] [Decl]
   deriving (Eq, Ord, Show, Read)
@@ -31,6 +32,17 @@ data Exp
   | ECon ConstrName
   | ECase Exp [Branch]
   deriving (Show, Eq, Ord, Read)
+
+type ValEnv = Map.Map VName Value
+
+data Value
+  = VInt Integer
+  | VClosure String Exp ValEnv
+  | VADT ConstrName [Value]
+  | VCon Int Value -- constructor value : arity, VADT
+  | VErr String
+   deriving (Eq, Ord)
+
 
 data Pat
     = PVar VName

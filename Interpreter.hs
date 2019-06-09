@@ -25,7 +25,7 @@ import Simplify
 
 import Types
 
-import ADTProcessing
+import ADTProcessing as ADT
 
 
 type ValEnv = Map.Map VName Value
@@ -33,13 +33,7 @@ type DataNameEnv = Map.Map ConstrName DataName
 
 type Env = (ValEnv, DataNameEnv)
 
-data Value
-  = VInt Integer
-  | VClosure String Exp ValEnv
-  | VADT ConstrName [Value]
-  | VCon Int Value -- constructor value : arity, VADT
-  | VErr String
-   deriving (Eq, Ord)
+
 
 type Interpret a = ExceptT String (ReaderT Env IO) a
 
@@ -259,10 +253,10 @@ typeCheck tenv (d:ds) = case d of
   _ -> Left "co tu sie stalo?"                                                 
 
 
--- throw out data decls
+-- throws out data decls
 filterDecls :: [Decl] -> [Decl]
-filterDecls (DataDecl _ _):ds = filterDecls ds
-filterDecls d:ds = d:(filterDecls ds)
+filterDecls ((DataDecl _ _):ds) = filterDecls ds
+filterDecls (d:ds) = d:(filterDecls ds)
 
 
 --TODO
@@ -274,7 +268,7 @@ interpretCode code = do
   case errTree of Err.Bad s -> throwError $ s
                   Err.Ok tree -> do
                     let Program imports _decls = simplify tree
-                    case runCreateEnv (env0, t0) _decls of
+                    case ADT.runCreateEnv (env0, t0) _decls of
                       Left err -> liftIO $ putStrLn err
                       Right e@((venv, denv), tenv) -> do
                         liftIO $ putStrLn e
@@ -282,7 +276,7 @@ interpretCode code = do
                         case typeCheck tenv decls of
                           Left err -> throwError err
                           Right tenv' -> liftIO $ putStrLn $ "Ostateczny typeenv: " ++ show tenv'
-                          local (const (venv, denv)) (evalDecls decls)
+                        local (const (venv, denv)) (evalDecls decls)
                     
 
 env0 = (Map.empty, Map.empty)
