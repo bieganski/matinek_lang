@@ -15,6 +15,17 @@ import Data.Bifunctor (bimap)
 
 import ProgGrammar
 
+
+
+{-
+Rekonstrukcja typów jest zaimplementowana jako
+inferencja Hindley`a-Milner'a, wzorowana na implementacji z linka
+http://dev.stephendiehl.com/fun/006_hindley_milner.html,
+z inferencją dostosowaną do algebraicznych, polimorficznych data-typów
+i wersji wyrażeń z pliku ProgGrammar.hs
+-}
+
+
 intT, boolT :: Type
 intT = TADT "Int" []
 boolT = TADT "Bool" []
@@ -28,19 +39,9 @@ data Subst = Subst (Map.Map TVar Type) deriving (Eq, Show)
 nullSubst :: Subst
 nullSubst = Subst Map.empty
 
--- najpierw przykłada drugie potem pierwsze
+-- first applies second one
 compose :: Subst -> Subst -> Subst
 compose s1@(Subst m1) s2@(Subst m2) = Subst $ Map.map (apply s1) m2 `Map.union` m1
-
-
-
-{-
-Rekonstrukcja typów jest zaimplementowana jako
-inferencja Hindley`a-Milner'a, wzorowana na implementacji z linka
-http://dev.stephendiehl.com/fun/006_hindley_milner.html,
-z inferencją dostosowaną do algebraicznych, polimorficznych data-typów
-i wersji wyrażeń z pliku ProgGrammar.hs
--}
 
 
 class SubstAble a where
@@ -199,10 +200,3 @@ s0 = NumVar {num = 0}
 
 doInfer :: NumVar -> Exp -> TypeEnv -> (Either String (Subst, Type), NumVar)
 doInfer s e tenv = runInfer s (infer tenv e)
-
-{-
-main :: IO ()
-main = do
-  let s = runSubst $ unify t1 t2
-  putStrLn $ show s
--}

@@ -231,7 +231,7 @@ handleImports (x:xs) = do
 
 
 builtins :: [FilePath]
-builtins = ["./builtins/builtins.hs"]
+builtins = [] -- ["./builtins/builtins.hs"]
 
 
 typeCheck :: NumVar -> TypeEnv -> [Decl] -> Either String TypeEnv

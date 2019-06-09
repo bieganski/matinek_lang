@@ -38,11 +38,11 @@ addConstrHelp e@(venv, denv, tenv) (Constr cname (t:ts)) dname =
 
 addConstr :: ADTEnv -> Constr -> DataName  -> Scheme -> DeclProcess ADTEnv
 addConstr e@(venv, denv, tenv) c@(Constr cname types) dname sch = do
-  validateJoined (foldr joinTypeScheme sch (reverse types))
+  validateJoined (foldr joinTypeScheme sch types)
   addConstrHelp (venv', denv', tenv') c dname where
     venv' = Map.insert cname (VADT cname []) venv
     denv' = Map.insert cname dname denv
-    tenv' = Map.insert cname (foldr joinTypeScheme sch (reverse types)) tenv
+    tenv' = Map.insert cname (foldr joinTypeScheme sch types) tenv
     
 
 parseConstrs :: ADTEnv -> Decl -> Scheme -> DeclProcess ADTEnv

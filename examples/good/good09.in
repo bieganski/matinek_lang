@@ -1,0 +1,4 @@
+data ABC a  = A a Int | B Int Int;
+
+lol = (A 55 22) ;
+main = A (A 55 22) 1 ;
