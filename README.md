@@ -25,3 +25,9 @@ Do zrobienia zostało mi podpięcie typechecku, póki co jest typowanie dynamicz
 W paczce znajdują się pliki wynikowe programu bnfc, można natomiast
 wygenerować je ręcznie.
 
+
+Druga iteracja - poprawki:
+
+- dodane przykłady bad, dodatkowe good
+- działająca rekonstrukcja typów (statyczna)
+- ładna obsługa błędów (nie używam nigdzie 'error')
