@@ -124,7 +124,7 @@ instance Print [AbsGrammar.Type] where
 instance Print AbsGrammar.Type where
   prt i e = case e of
     AbsGrammar.TVar lowerident -> prPrec i 1 (concatD [prt 0 lowerident])
-    AbsGrammar.TCon upperident types -> prPrec i 1 (concatD [prt 0 upperident, prt 0 types])
+    AbsGrammar.TADT upperident types -> prPrec i 1 (concatD [prt 0 upperident, prt 0 types])
     AbsGrammar.TArr type_1 type_2 -> prPrec i 1 (concatD [prt 2 type_1, doc (showString "->"), prt 1 type_2])
   prtList _ [] = concatD []
   prtList _ (x:xs) = concatD [prt 0 x, prt 0 xs]

@@ -444,7 +444,7 @@ happyReduction_15 happy_x_2
 	 =  case happyOut7 happy_x_1 of { happy_var_1 -> 
 	case happyOut14 happy_x_2 of { happy_var_2 -> 
 	happyIn13
-		 (AbsGrammar.TCon happy_var_1 (reverse happy_var_2)
+		 (AbsGrammar.TADT happy_var_1 (reverse happy_var_2)
 	)}}
 
 happyReduce_16 = happySpecReduce_3  9# happyReduction_16

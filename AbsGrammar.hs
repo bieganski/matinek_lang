@@ -18,7 +18,7 @@ data Import = Import String
   deriving (Eq, Ord, Show, Read)
 
 data Type
-    = TVar LowerIdent | TCon UpperIdent [Type] | TArr Type Type
+    = TVar LowerIdent | TADT UpperIdent [Type] | TArr Type Type
   deriving (Eq, Ord, Show, Read)
 
 data Pat

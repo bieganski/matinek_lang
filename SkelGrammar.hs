@@ -24,7 +24,7 @@ transImport x = case x of
 transType :: Type -> Result
 transType x = case x of
   TVar lowerident -> failure x
-  TCon upperident types -> failure x
+  TADT upperident types -> failure x
   TArr type_1 type_2 -> failure x
 transPat :: Pat -> Result
 transPat x = case x of

@@ -31,7 +31,7 @@ separator Import ";" ;
 
 TVar.       Type1 ::= LowerIdent ; 
 
-TCon.       Type1 ::= UpperIdent [Type] ; -- Nil / Maybe a
+TADT.       Type1 ::= UpperIdent [Type] ; -- Nil / Maybe a
 
 TArr.       Type1 ::= Type2 "->" Type1 ;
 

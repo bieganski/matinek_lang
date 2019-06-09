@@ -69,6 +69,6 @@ data Type
 
 instance Show Type where
   show t = case t of TVar x -> show x
-                     TCon s lst -> s ++ (show lst)
+                     TADT s lst -> s ++ (show lst)
                      TArr t1 t2 -> (show t1) ++ " -> " ++ (show t2)
 

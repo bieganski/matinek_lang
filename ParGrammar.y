@@ -70,7 +70,7 @@ ListImport : {- empty -} { [] }
            | Import ';' ListImport { (:) $1 $3 }
 Type1 :: { Type }
 Type1 : LowerIdent { AbsGrammar.TVar $1 }
-      | UpperIdent ListType { AbsGrammar.TCon $1 (reverse $2) }
+      | UpperIdent ListType { AbsGrammar.TADT $1 (reverse $2) }
       | Type2 '->' Type1 { AbsGrammar.TArr $1 $3 }
       | Type2 { $1 }
 ListType :: { [Type] }

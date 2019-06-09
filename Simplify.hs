@@ -36,7 +36,7 @@ instance Simplable a b => Simplable [a] [b] where
 instance Simplable A.Type P.Type where
   simpl :: A.Type -> P.Type
   simpl t = case t of A.TVar (A.LowerIdent s) -> P.TVar $ P.TV s
-                      A.TCon (A.UpperIdent s) types -> P.TCon s $ simpl types
+                      A.TADT (A.UpperIdent s) types -> P.TADT s $ simpl types
                       A.TArr t1 t2 -> P.TArr (simpl t1) (simpl t2)
                       
 
