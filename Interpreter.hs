@@ -158,7 +158,6 @@ evalOp Mul (VInt v1) (VInt v2) = return $ VInt $ v1 * v2
 evalOp Eq  (VInt v1) (VInt v2) = return $ VADT res [] where res = if v1 == v2 then "True" else "False"
 evalOp op _ _ = throwError $ "Bad arguments for " ++ (show op) ++ " operation"
 
-t0 = TypeEnv Map.empty
 
 evalDecls :: [Decl] -> Interpret Env
 evalDecls [] = do
@@ -172,9 +171,6 @@ evalDecls (d:ds) = case d
        when (elem x (Map.keys venv)) $ liftIO $ putStrLn $ "warning: overwriting " ++ (show x) ++ " variable."
        eval e >>= \ee -> localVal (Map.insert x ee) (evalDecls ds)
        
-runInterpreter :: Interpret a -> Env -> IO (Either String a)
-runInterpreter comp env = runReaderT (runExceptT comp) env
-
 
 printListSugarNonEmpty :: Value -> Bool -> IO ()
 printListSugarNonEmpty (VADT "Nil" []) False = putStrLn "]"
@@ -204,31 +200,30 @@ loadModule (Import filename) = do
   return code
 
 
-_handleImport :: Import -> Interpret Env
-_handleImport im = do
+_handleImport :: Import -> (Env, TypeEnv) -> NumVar -> Interpret ((Env, TypeEnv), NumVar)
+_handleImport im env s = do
   code <- liftIO $ loadModule im
-  interpretCode code
+  interpretCode code False env s
 
 
-handleImports :: [Import] -> Interpret Env
-handleImports [] = ask
-handleImports (x:xs) = do
-  env <- _handleImport x
-  local (const env) (handleImports xs)
+handleImports :: [Import] -> (Env, TypeEnv) -> NumVar -> Interpret ((Env, TypeEnv), NumVar)
+handleImports [] e s = return (e, s)
+handleImports (x:xs) e s = do
+  (env, ss) <- _handleImport x e s
+  handleImports xs env ss
 
 
 builtins :: [FilePath]
-builtins = [] -- ["./builtins/builtins.hs"]
+builtins = ["./builtins/builtins.hs"]
 
 
-typeCheck :: NumVar -> TypeEnv -> [Decl] -> Either String TypeEnv
-typeCheck _ t [] = Right t
+typeCheck :: NumVar -> TypeEnv -> [Decl] -> (Either String TypeEnv, NumVar)
+typeCheck s t [] = (Right t, s)
 typeCheck ss tenv (d:ds) = case d of
-  -- DataDecl dname freeletters constrs -> undefined
   AssignDecl x e -> case doInfer ss e tenv of
-    (Left err, _) -> Left (err ++ "\n  at expression " ++ (show x))
+    (Left err, s) -> (Left (err ++ "\n  at expression " ++ (show x)), s)
     (Right (sub, t), s) -> typeCheck s newtenv ds where newtenv = addScheme x (generalize tenv t) tenv
-  _ -> Left "next GHC bug"                                                 
+  _ -> (Left "next GHC bug", ss)
 
 
 -- throws out data decls
@@ -237,49 +232,58 @@ filterDecls ((DataDecl _ _ _):ds) = filterDecls ds
 filterDecls (d:ds) = d:(filterDecls ds)
 filterDecls [] = []
 
+
+
 --TODO
-                    -- liftIO $ putStrLn $ show $ tree
-                    -- postimportenv <- handleImports imports
-interpretCode :: String -> Interpret Env
-interpretCode code = do
+-- postimportenv <- handleImports imports
+interpretCode :: String -> Bool -> (Env, TypeEnv) -> NumVar -> Interpret ((Env, TypeEnv), NumVar)
+interpretCode code isMainModule (env, tenv) ss = do
   let errTree = Par.pProgram $ Par.myLexer code
   case errTree of Err.Bad s -> throwError $ s
                   Err.Ok tree -> do
                     let Program imports _decls = simplify tree
-                    case runCreateEnv (env0, t0) _decls of
+                    env <- ask
+                    case runCreateEnv (env, tenv) _decls of
                       Left err -> throwError $ "Static error: " ++ err
                       Right e@((venv, denv), tenv) -> do
                         liftIO $ putStrLn $ show e
                         let decls = filterDecls _decls
-                        case typeCheck s0 tenv decls of
-                          Left err -> throwError $ "Typecheck error: " ++ err
-                          Right tenv' -> liftIO $ putStrLn $ "Ostateczny typeenv: " ++ show tenv'
-                        if findMain decls
-                          then local (const (venv, denv)) (evalDecls decls)
-                          else throwError $ "Static error: Cannot find \"main\" expression!"
+                        case typeCheck ss tenv decls of
+                          (Left err, _) -> throwError $ "Typecheck error: " ++ err
+                          (Right tenv', s) -> do
+                            liftIO $ putStrLn $ "Ostateczny typeenv: " ++ show tenv'
+                            if isMainModule && (not (findMain decls))
+                              then throwError $ "Static error: Cannot find \"main\" expression!"
+                              else do
+                              (venv', denv') <- local (const (venv, denv)) (evalDecls decls)
+                              return (((venv', denv'), tenv'), s)
 
 findMain :: [Decl] -> Bool
 findMain [] = False
 findMain ((AssignDecl "main" _):ds) = True
 findMain (_:ds) = findMain ds
 
-env0 = (Map.empty, Map.empty)
+env0 = (Map.empty, Map.empty) :: Env
+t0 = TypeEnv Map.empty
 
-loadBuiltins :: IO Env
+loadBuiltins :: IO ((Env, TypeEnv), NumVar)
 loadBuiltins = do
-  res <- runInterpreter (handleImports (map Import builtins)) env0
+  res <- runInterpreter (handleImports (map Import builtins) (env0, t0) s0) (env0, t0)
   case res of
-    Right env -> return env
-    Left s -> error $ "internal error: builitins"
+    Right (env, s) -> return (env, s)
+    Left err -> error $ "internal error - builitins: " ++ err
 
 
 
--- TODO : wczytywanie i typowanie builtinsów
+runInterpreter :: Interpret a -> (Env, TypeEnv) -> IO (Either String a)
+runInterpreter comp (env, _) = runReaderT (runExceptT comp) env
+
+
 main :: IO ()
 main = do
   code <- getContents
-  envbuiltins <- loadBuiltins
-  res <- runInterpreter (interpretCode code) envbuiltins
+  (envbuiltins, s) <- loadBuiltins
+  res <- runInterpreter (interpretCode code True envbuiltins s) envbuiltins
   case res of
-    Right (venv, _) -> printMain venv
+    Right (((venv, _), _), _) -> printMain venv
     Left s -> putStrLn s

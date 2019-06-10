@@ -49,6 +49,7 @@ instance Simplable A.Decl P.Decl where
   
   simpl (A.AssignDecl (A.LowerIdent var) e) = P.AssignDecl var (simpl e)
   -- simpl (A.FunDecl f x1 xs e) = simpl $ A.AssignDecl f (foldr A.ELam e (x1:xs))
+  -- for recursion purposes I did it another way
   simpl (A.FunDecl f x1 xs e) = simpl $ A.AssignDecl f $ A.ELet f (foldr A.ELam e (x1:xs)) (A.EVar f)
 
 instance Simplable A.DataDecl P.Decl where
