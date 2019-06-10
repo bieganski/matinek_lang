@@ -102,7 +102,7 @@ unify (TADT a (t:ts)) (TADT b (tt:tts)) = if a /= b
   first <- unify t tt
   rest <- unify (TADT a (apply first ts)) (TADT b (apply first tts))
   return rest
-unify t1 t2 = throwError $ "cannot unify type \"" ++ (show t1) ++ "\" with \"" ++ (show t2) ++ "\""
+unify t1 t2 = throwError $ "cannot unify type \'" ++ (show t1) ++ "\' with \'" ++ (show t2) ++ "\'"
 
 bind :: TVar -> Type -> Infer Subst
 bind tv t | occursCheck tv t = throwError $ "cannot unify " ++ (show tv) ++ " and " ++ (show t)

@@ -243,12 +243,10 @@ interpretCode code isMainModule (env, tenv) ss = do
                     case runCreateEnv (env, tenv) _decls of
                       Left err -> throwError $ "Static error: " ++ err
                       Right e@((venv, denv), tenv) -> do
-                        liftIO $ putStrLn $ show e
                         let decls = filterDecls _decls
                         case typeCheck ss tenv decls of
                           (Left err, _) -> throwError $ "Typecheck error: " ++ err
                           (Right tenv', s) -> do
-                            liftIO $ putStrLn $ "Ostateczny typeenv: " ++ show tenv'
                             if isMainModule && (not (findMain decls))
                               then throwError $ "Static error: Cannot find \"main\" expression!"
                               else do
