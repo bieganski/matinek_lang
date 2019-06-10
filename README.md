@@ -23,7 +23,11 @@ ghc Interpreter.hs -o interpreter; cat examples/good/good1.in | ./interpreter
 
 ## Examples
 
-There are exhaustive bunch of examples of proper nad bad use cases, all placed in
+There is exhaustive bunch of examples of proper and bad use cases, all placed in
 ```
-/examples/good/* and /examples/bad/*
+/examples/good/*
+```
+
+```
+/examples/bad/*
 ```
