@@ -102,7 +102,7 @@ unify (TADT a (t:ts)) (TADT b (tt:tts)) = if a /= b
   first <- unify t tt
   rest <- unify (TADT a (apply first ts)) (TADT b (apply first tts))
   return rest
-unify t1 t2 = throwError $ (show t1) ++ " |||| " ++ (show t2)
+unify t1 t2 = throwError $ "cannot unify type \"" ++ (show t1) ++ "\" with \"" ++ (show t2) ++ "\""
 
 bind :: TVar -> Type -> Infer Subst
 bind tv t | occursCheck tv t = throwError $ "cannot unify " ++ (show tv) ++ " and " ++ (show t)
@@ -157,10 +157,6 @@ infer env (EApp e1 e2) = do
   (s2, t2) <- infer (apply s1 env) e2
   ss <- unify (apply s2 t1) (TArr t2 newvar)
   return (ss `compose` s2 `compose` s1, apply ss newvar)
-  --case t1 of TArr _ _ -> do
-  --             ss <- unify (apply s2 t1) (TArr t2 newvar)
-  --             return (ss `compose` s2 `compose` s1, apply ss newvar)
-  --           _ -> throwError $ (show t1) ++ " is not applicable!"
 infer env (ELet x e1 e2) = do
   xtvar <- fresh
   let env' = addScheme x (Forall [] xtvar) env
@@ -193,14 +189,6 @@ inferBranch (Branch _ e) env = infer env e
 runInfer :: NumVar -> Infer (Subst, Type) -> (Either String (Subst, Type), NumVar)
 runInfer s comp = runState (runExceptT comp) s
 
-
-t1 = TArr (TVar (TV "a")) (TVar (TV "a"))
-t2 = TArr intT boolT
-
-s0 = NumVar {num = 0}
-
---runSubst :: Infer Subst -> Either String Subst
---runSubst comp = evalState (runExceptT comp) s0
 
 doInfer :: NumVar -> Exp -> TypeEnv -> (Either String (Subst, Type), NumVar)
 doInfer s e tenv = runInfer s (infer tenv e)

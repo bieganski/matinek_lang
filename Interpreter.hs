@@ -222,8 +222,8 @@ typeCheck s t [] = (Right t, s)
 typeCheck ss tenv (d:ds) = case d of
   AssignDecl x e -> case doInfer ss e tenv of
     (Left err, s) -> (Left (err ++ "\n  at expression " ++ (show x)), s)
-    (Right (sub, t), s) -> typeCheck s newtenv ds where newtenv = addScheme x (generalize tenv t) tenv
-  _ -> (Left "next GHC bug", ss)
+    (Right (sub, t), s) -> typeCheck s newtenv ds where newtenv = apply sub (addScheme x (generalize tenv t) tenv)
+  _ -> (Left "must be GHC bug", ss)
 
 
 -- throws out data decls
@@ -233,16 +233,13 @@ filterDecls (d:ds) = d:(filterDecls ds)
 filterDecls [] = []
 
 
-
---TODO
--- postimportenv <- handleImports imports
 interpretCode :: String -> Bool -> (Env, TypeEnv) -> NumVar -> Interpret ((Env, TypeEnv), NumVar)
 interpretCode code isMainModule (env, tenv) ss = do
   let errTree = Par.pProgram $ Par.myLexer code
   case errTree of Err.Bad s -> throwError $ s
                   Err.Ok tree -> do
                     let Program imports _decls = simplify tree
-                    env <- ask
+                    ((env, tenv), ss) <- handleImports imports (env, tenv) ss
                     case runCreateEnv (env, tenv) _decls of
                       Left err -> throwError $ "Static error: " ++ err
                       Right e@((venv, denv), tenv) -> do
@@ -265,6 +262,7 @@ findMain (_:ds) = findMain ds
 
 env0 = (Map.empty, Map.empty) :: Env
 t0 = TypeEnv Map.empty
+s0 = NumVar {num = 0}
 
 loadBuiltins :: IO ((Env, TypeEnv), NumVar)
 loadBuiltins = do
@@ -272,7 +270,6 @@ loadBuiltins = do
   case res of
     Right (env, s) -> return (env, s)
     Left err -> error $ "internal error - builitins: " ++ err
-
 
 
 runInterpreter :: Interpret a -> (Env, TypeEnv) -> IO (Either String a)

@@ -51,7 +51,7 @@ data Value
    deriving (Eq, Ord)
 
 pprintlst :: Show a => [a] -> String
-pprintlst [] = " "
+pprintlst [] = ""
 pprintlst (x:xs) = " " ++ (show x) ++ (pprintlst xs)
 
 
@@ -89,18 +89,20 @@ data Import = Import String
 
 
 newtype TVar = TV String
-  deriving (Show, Eq, Ord, Read)
+  deriving (Eq, Ord, Read)
+
+instance Show TVar where
+  show (TV s) = show s
 
 data Type
   = TVar TVar
   | TADT String [Type]
   | TArr Type Type
-   deriving (Eq, Ord, Read, Show)
+   deriving (Eq, Ord, Read)
 
-{-
+
 instance Show Type where
   show t = case t of TVar x -> show x
-                     TADT s lst -> s ++ (show lst)
+                     TADT s lst -> s ++ (pprintlst lst)
                      TArr t1 t2 -> (show t1) ++ " -> " ++ (show t2)
 
--}

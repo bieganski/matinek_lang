@@ -1,0 +1,3 @@
+data Data a  b= Just a b a | Nothing ;
+
+main = Just 3 4 Nothing;

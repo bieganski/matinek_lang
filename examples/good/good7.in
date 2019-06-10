@@ -1,1 +1,1 @@
-main = [1, Just 3] ;
+main = [Nothing, Just 3] ;
