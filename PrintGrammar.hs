@@ -106,7 +106,7 @@ instance Print [AbsGrammar.UpperIdent] where
 
 instance Print AbsGrammar.Program where
   prt i e = case e of
-    AbsGrammar.Program imports decls -> prPrec i 0 (concatD [prt 0 imports, prt 0 decls])
+    AbsGrammar.Program imports datadecls decls -> prPrec i 0 (concatD [prt 0 imports, prt 0 datadecls, prt 0 decls])
 
 instance Print AbsGrammar.Import where
   prt i e = case e of
@@ -172,10 +172,17 @@ instance Print AbsGrammar.Exp where
 instance Print [AbsGrammar.Exp] where
   prt = prtList
 
+instance Print AbsGrammar.DataDecl where
+  prt i e = case e of
+    AbsGrammar.DataDecl upperident loweridents constrs -> prPrec i 0 (concatD [doc (showString "data"), prt 0 upperident, prt 0 loweridents, doc (showString "="), prt 0 constrs])
+  prtList _ [] = concatD []
+  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
+
+instance Print [AbsGrammar.DataDecl] where
+  prt = prtList
+
 instance Print AbsGrammar.Decl where
   prt i e = case e of
-    AbsGrammar.TDecl lowerident type_ -> prPrec i 0 (concatD [prt 0 lowerident, doc (showString "::"), prt 0 type_])
-    AbsGrammar.DataDecl upperident loweridents constrs -> prPrec i 0 (concatD [doc (showString "data"), prt 0 upperident, prt 0 loweridents, doc (showString "="), prt 0 constrs])
     AbsGrammar.AssignDecl lowerident exp -> prPrec i 0 (concatD [prt 0 lowerident, doc (showString "="), prt 0 exp])
     AbsGrammar.FunDecl lowerident1 lowerident2 loweridents exp -> prPrec i 0 (concatD [prt 0 lowerident1, prt 0 lowerident2, prt 0 loweridents, doc (showString "="), prt 0 exp])
   prtList _ [] = concatD []

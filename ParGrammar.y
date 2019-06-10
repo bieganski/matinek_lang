@@ -20,26 +20,25 @@ import ErrM
   ',' { PT _ (TS _ 5) }
   '-' { PT _ (TS _ 6) }
   '->' { PT _ (TS _ 7) }
-  '::' { PT _ (TS _ 8) }
-  ';' { PT _ (TS _ 9) }
-  '=' { PT _ (TS _ 10) }
-  '==' { PT _ (TS _ 11) }
-  '[' { PT _ (TS _ 12) }
-  '\\' { PT _ (TS _ 13) }
-  ']' { PT _ (TS _ 14) }
-  '_' { PT _ (TS _ 15) }
-  'case' { PT _ (TS _ 16) }
-  'data' { PT _ (TS _ 17) }
-  'else' { PT _ (TS _ 18) }
-  'if' { PT _ (TS _ 19) }
-  'import' { PT _ (TS _ 20) }
-  'in' { PT _ (TS _ 21) }
-  'let' { PT _ (TS _ 22) }
-  'of' { PT _ (TS _ 23) }
-  'then' { PT _ (TS _ 24) }
-  '{' { PT _ (TS _ 25) }
-  '|' { PT _ (TS _ 26) }
-  '}' { PT _ (TS _ 27) }
+  ';' { PT _ (TS _ 8) }
+  '=' { PT _ (TS _ 9) }
+  '==' { PT _ (TS _ 10) }
+  '[' { PT _ (TS _ 11) }
+  '\\' { PT _ (TS _ 12) }
+  ']' { PT _ (TS _ 13) }
+  '_' { PT _ (TS _ 14) }
+  'case' { PT _ (TS _ 15) }
+  'data' { PT _ (TS _ 16) }
+  'else' { PT _ (TS _ 17) }
+  'if' { PT _ (TS _ 18) }
+  'import' { PT _ (TS _ 19) }
+  'in' { PT _ (TS _ 20) }
+  'let' { PT _ (TS _ 21) }
+  'of' { PT _ (TS _ 22) }
+  'then' { PT _ (TS _ 23) }
+  '{' { PT _ (TS _ 24) }
+  '|' { PT _ (TS _ 25) }
+  '}' { PT _ (TS _ 26) }
 
 L_quoted { PT _ (TL $$) }
 L_integ  { PT _ (TI $$) }
@@ -61,7 +60,7 @@ ListUpperIdent :: { [UpperIdent] }
 ListUpperIdent : {- empty -} { [] }
                | UpperIdent ListUpperIdent { (:) $1 $2 }
 Program :: { Program }
-Program : ListImport ListDecl { AbsGrammar.Program $1 (reverse $2) }
+Program : ListImport ListDataDecl ListDecl { AbsGrammar.Program $1 (reverse $2) (reverse $3) }
 Import :: { Import }
 Import : 'import' String { AbsGrammar.Import $2 }
 ListImport :: { [Import] }
@@ -123,10 +122,13 @@ Exp1 :: { Exp }
 Exp1 : Exp2 { $1 }
 Exp5 :: { Exp }
 Exp5 : Exp6 { $1 }
+DataDecl :: { DataDecl }
+DataDecl : 'data' UpperIdent ListLowerIdent '=' ListConstr { AbsGrammar.DataDecl $2 $3 $5 }
+ListDataDecl :: { [DataDecl] }
+ListDataDecl : {- empty -} { [] }
+             | ListDataDecl DataDecl ';' { flip (:) $1 $2 }
 Decl :: { Decl }
-Decl : LowerIdent '::' Type { AbsGrammar.TDecl $1 $3 }
-     | 'data' UpperIdent ListLowerIdent '=' ListConstr { AbsGrammar.DataDecl $2 $3 $5 }
-     | LowerIdent '=' Exp { AbsGrammar.AssignDecl $1 $3 }
+Decl : LowerIdent '=' Exp { AbsGrammar.AssignDecl $1 $3 }
      | LowerIdent LowerIdent ListLowerIdent '=' Exp { AbsGrammar.FunDecl $1 $2 $3 $5 }
      | Decl1 { $1 }
 ListDecl :: { [Decl] }

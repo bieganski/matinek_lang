@@ -31,3 +31,6 @@ Druga iteracja - poprawki:
 - dodane przykłady bad, dodatkowe good
 - działająca rekonstrukcja typów (statyczna)
 - ładna obsługa błędów (nie używam nigdzie 'error')
+- definicje typów dopuszczalne na początku pliku
+- rekurencyjne definicje globalne
+

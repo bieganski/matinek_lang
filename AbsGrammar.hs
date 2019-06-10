@@ -11,7 +11,7 @@ newtype LowerIdent = LowerIdent String
   deriving (Eq, Ord, Show, Read)
 newtype UpperIdent = UpperIdent String
   deriving (Eq, Ord, Show, Read)
-data Program = Program [Import] [Decl]
+data Program = Program [Import] [DataDecl] [Decl]
   deriving (Eq, Ord, Show, Read)
 
 data Import = Import String
@@ -44,10 +44,11 @@ data Exp
     | ECase Exp [Branch]
   deriving (Eq, Ord, Show, Read)
 
+data DataDecl = DataDecl UpperIdent [LowerIdent] [Constr]
+  deriving (Eq, Ord, Show, Read)
+
 data Decl
-    = TDecl LowerIdent Type
-    | DataDecl UpperIdent [LowerIdent] [Constr]
-    | AssignDecl LowerIdent Exp
+    = AssignDecl LowerIdent Exp
     | FunDecl LowerIdent LowerIdent [LowerIdent] Exp
   deriving (Eq, Ord, Show, Read)
 

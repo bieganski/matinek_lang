@@ -98,7 +98,7 @@ eval e = case e of
   EOp e1 op e2 -> do
     v1 <- eval e1
     v2 <- eval e2
-    return $ evalOp op v1 v2
+    evalOp op v1 v2
   ECon cname -> do
     (venv, denv) <- ask
     case Map.lookup cname venv of
@@ -163,13 +163,12 @@ applyClos :: Value -> Value -> Interpret Value
 applyClos (VClosure x e env) val = localVal (Map.insert x val) (eval e)
 applyClos e1 _  = throwError $ (show e1) ++  "is not applicative"
 
-evalOp :: Binop -> Value -> Value -> Value
-evalOp Add (VInt v1) (VInt v2) = VInt $ v1 + v2
-evalOp Sub (VInt v1) (VInt v2) = VInt $ v1 - v2
-evalOp Mul (VInt v1) (VInt v2) = VInt $ v1 * v2
-evalOp Eq  (VInt v1) (VInt v2) = VADT res [] where res = if v1 == v2 then "True" else "False"
-
-
+evalOp :: Binop -> Value -> Value -> Interpret Value
+evalOp Add (VInt v1) (VInt v2) = return $ VInt $ v1 + v2
+evalOp Sub (VInt v1) (VInt v2) = return $ VInt $ v1 - v2
+evalOp Mul (VInt v1) (VInt v2) = return $ VInt $ v1 * v2
+evalOp Eq  (VInt v1) (VInt v2) = return $ VADT res [] where res = if v1 == v2 then "True" else "False"
+evalOp op _ _ = throwError $ "Bad arguments for " ++ (show op) ++ " operation"
 
 t0 = TypeEnv Map.empty
 
@@ -239,7 +238,7 @@ typeCheck _ t [] = Right t
 typeCheck ss tenv (d:ds) = case d of
   -- DataDecl dname freeletters constrs -> undefined
   AssignDecl x e -> case doInfer ss e tenv of
-    (Left err, _) -> Left (err ++ "\n  at expression " ++ (show e))
+    (Left err, _) -> Left (err ++ "\n  at expression " ++ (show x))
     (Right (sub, t), s) -> typeCheck s newtenv ds where newtenv = addScheme x (generalize tenv t) tenv
   _ -> Left "next GHC bug"                                                 
 

@@ -43,7 +43,7 @@ The symbols used in Grammar are the following:
   | _ | * | + | -
   | == | { | = | }
   | \ | [ | ] | ,
-  | :: | | |  | 
+  | | |  |  | 
 
 ===Comments===
 Single-line comments begin with #.Multiple-line comments are  enclosed with {# and #}.
@@ -58,7 +58,7 @@ All other symbols are terminals.
   |  |  **|**  | //LowerIdent// //[LowerIdent]// 
   | //[UpperIdent]// | -> | **eps**
   |  |  **|**  | //UpperIdent// //[UpperIdent]// 
-  | //Program// | -> | //[Import]// //[Decl]// 
+  | //Program// | -> | //[Import]// //[DataDecl]// //[Decl]// 
   | //Import// | -> | ``import`` //String// 
   | //[Import]// | -> | **eps**
   |  |  **|**  | //Import// 
@@ -106,9 +106,10 @@ All other symbols are terminals.
   |  |  **|**  | //Exp// ``,`` //[Exp]// 
   | //Exp1// | -> | //Exp2// 
   | //Exp5// | -> | //Exp6// 
-  | //Decl// | -> | //LowerIdent// ``::`` //Type// 
-  |  |  **|**  | ``data`` //UpperIdent// //[LowerIdent]// ``=`` //[Constr]// 
-  |  |  **|**  | //LowerIdent// ``=`` //Exp// 
+  | //DataDecl// | -> | ``data`` //UpperIdent// //[LowerIdent]// ``=`` //[Constr]// 
+  | //[DataDecl]// | -> | **eps**
+  |  |  **|**  | //DataDecl// ``;`` //[DataDecl]// 
+  | //Decl// | -> | //LowerIdent// ``=`` //Exp// 
   |  |  **|**  | //LowerIdent// //LowerIdent// //[LowerIdent]// ``=`` //Exp// 
   |  |  **|**  | //Decl1// 
   | //[Decl]// | -> | **eps**

@@ -17,7 +17,7 @@ transUpperIdent x = case x of
   UpperIdent string -> failure x
 transProgram :: Program -> Result
 transProgram x = case x of
-  Program imports decls -> failure x
+  Program imports datadecls decls -> failure x
 transImport :: Import -> Result
 transImport x = case x of
   Import string -> failure x
@@ -50,10 +50,11 @@ transExp x = case x of
   ELam lowerident exp -> failure x
   ELst exps -> failure x
   ECase exp branchs -> failure x
+transDataDecl :: DataDecl -> Result
+transDataDecl x = case x of
+  DataDecl upperident loweridents constrs -> failure x
 transDecl :: Decl -> Result
 transDecl x = case x of
-  TDecl lowerident type_ -> failure x
-  DataDecl upperident loweridents constrs -> failure x
   AssignDecl lowerident exp -> failure x
   FunDecl lowerident1 lowerident2 loweridents exp -> failure x
 transConstr :: Constr -> Result

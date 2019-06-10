@@ -46,17 +46,22 @@ instance Simplable A.Constr P.Constr where
 
 instance Simplable A.Decl P.Decl where
   simpl :: A.Decl -> P.Decl
+  
+  simpl (A.AssignDecl (A.LowerIdent var) e) = P.AssignDecl var (simpl e)
+  -- simpl (A.FunDecl f x1 xs e) = simpl $ A.AssignDecl f (foldr A.ELam e (x1:xs))
+  simpl (A.FunDecl f x1 xs e) = simpl $ A.AssignDecl f $ A.ELet f (foldr A.ELam e (x1:xs)) (A.EVar f)
+
+instance Simplable A.DataDecl P.Decl where
   simpl (A.DataDecl (A.UpperIdent dname) letters constrs) =
     P.DataDecl dname (fetch letters) (simpl constrs)
-  simpl (A.AssignDecl (A.LowerIdent var) e) = P.AssignDecl var (simpl e)
-  simpl (A.FunDecl f x1 xs e) = simpl $ A.AssignDecl f (foldr A.ELam e (x1:xs))
-
+    
 instance Simplable A.Import P.Import where
   simpl (A.Import fname) = P.Import fname
 
 instance Simplable A.Program P.Program where
   simpl :: A.Program -> P.Program
-  simpl (A.Program imports decls) = P.Program (simpl imports) (simpl decls)
+  simpl (A.Program imports ddecls decls) =
+    P.Program (simpl imports) ((simpl ddecls) ++ (simpl decls))
 
 
 simplCons :: [P.Exp] -> P.Exp

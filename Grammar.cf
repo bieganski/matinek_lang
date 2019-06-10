@@ -19,7 +19,7 @@ comment    "{#" "#}" ;
 
 entrypoints Program ;
 
-Program.    Program ::= [Import] [Decl]  ;
+Program.    Program ::= [Import] [DataDecl] [Decl]  ;
 
 
 
@@ -93,10 +93,10 @@ coercions  Exp 7 ;
 
 
 
+DataDecl.       DataDecl ::= "data" UpperIdent [LowerIdent] "=" [Constr] ;
 
-TDecl.          Decl ::= LowerIdent "::" Type ;
+terminator DataDecl ";" ;
 
-DataDecl.       Decl ::= "data" UpperIdent [LowerIdent] "=" [Constr] ;
 
 AssignDecl.     Decl ::= LowerIdent "=" Exp ;
 
