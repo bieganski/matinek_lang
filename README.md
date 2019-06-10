@@ -1,37 +1,29 @@
-Interpreter funkcyjnego języka składnią zbliżonego do Haskella.
-Ewaluacja wyrażeń jest zachłanna.
-Wynik programu jest ewaluacją wyrażenia o nazwie "main"
-Interpreter czyta input z wejścia, zatem aby uruchumić na zawartości pliku "test.txt",
-należy wpisać "cat test.txt | ./interpreter".
+# Abstract
 
-Kolejne przykłady (goodN.in) obrazują kolejne funkcjonalności interpretera:
+Functional, Haskell-like language interpreter (written in Haskell).
 
-N =
-1.  Prosty przykład działania
-2.  Importowanie modułów
-3.  Sposoby deklaracji funkcji
-4.  Rekurencja
-5.  Typy algebraiczne
-6.  Wbudowane typy (List, Maybe)
-7.  Lukier składniowy dla list (input i output)
-8.  Pattern matching
+## Getting started
 
+```
+ghc Interpreter.hs -o interpreter; cat examples/good/good1.in | ./interpreter
+```
 
+## Features
 
-Uwagi:
-Gramatyka AbsGrammar za pomocą Simplify.hs jest konwertowana na prostszą ProgGrammar.hs.
-Do zrobienia zostało mi podpięcie typechecku, póki co jest typowanie dynamiczne.
+* algebraic, polimorphic data types
+* Hindley-Milner types reconstruction
+* pattern matching
+* strict expression evaluation
+* modules importing
+* recursive let and functions
+* set of builtins (Just, List)
+* list input and output desugaring ([1,2,3])
+* static parsing (i.a main finding, typecheck)
+* monadic environment and errors handling
 
-W paczce znajdują się pliki wynikowe programu bnfc, można natomiast
-wygenerować je ręcznie.
+## Examples
 
-
-Druga iteracja - poprawki:
-
-- dodane przykłady bad, dodatkowe good
-- działająca rekonstrukcja typów (statyczna)
-- ładna obsługa błędów (poza ładowaniem builtinsów nie używam 'error')
-- definicje typów dopuszczalne na początku pliku
-- rekurencyjne definicje globalne
-- statyczne sprawdzanie istnienia "main"
-
+There are exhaustive bunch of examples of proper nad bad use cases, all placed in
+```
+/examples/good/* and /examples/bad/*
+```
