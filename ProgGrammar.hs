@@ -50,6 +50,17 @@ data Value
   | VErr String
    deriving (Eq, Ord)
 
+pprintlst :: Show a => [a] -> String
+pprintlst [] = " "
+pprintlst (x:xs) = " " ++ (show x) ++ (pprintlst xs)
+
+
+instance Show Value where
+  show val = case val of VInt n -> show n
+                         VClosure x e env -> "\\" ++ (show x) ++ " -> " ++ (show e)
+                         VADT cname vals -> cname ++ (pprintlst vals)
+                         VCon arity val -> "(VCON - constr. with arity " ++ (show arity) ++ " - " ++(show val) ++ ")"
+                         VErr s -> show s
 
 data Pat
     = PVar VName

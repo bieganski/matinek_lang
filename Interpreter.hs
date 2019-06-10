@@ -31,18 +31,6 @@ import ADTProcessing
 type Interpret a = ExceptT String (ReaderT Env IO) a
 
 
-instance Show Value where
-  show val = case val of VInt n -> show n
-                         VClosure x e env -> "\\" ++ (show x) ++ " -> " ++ (show e)
-                         VADT cname vals -> "VADT " ++  cname ++ (pprintlst vals)
-                         VCon arity val -> "##VCON " ++ (show arity) ++ (show val)
-                         VErr s -> show s
-
-
-pprintlst :: Show a => [a] -> String
-pprintlst [] = " "
-pprintlst (x:xs) = " " ++ (show x) ++ (pprintlst xs)
-
 localVal :: (ValEnv -> ValEnv) -> Interpret a -> Interpret a
 localVal f = local (\(a,b) -> (f a, b))
 
@@ -266,8 +254,14 @@ interpretCode code = do
                         case typeCheck s0 tenv decls of
                           Left err -> throwError $ "Typecheck error: " ++ err
                           Right tenv' -> liftIO $ putStrLn $ "Ostateczny typeenv: " ++ show tenv'
-                        local (const (venv, denv)) (evalDecls decls)
-                    
+                        if findMain decls
+                          then local (const (venv, denv)) (evalDecls decls)
+                          else throwError $ "Static error: Cannot find \"main\" expression!"
+
+findMain :: [Decl] -> Bool
+findMain [] = False
+findMain ((AssignDecl "main" _):ds) = True
+findMain (_:ds) = findMain ds
 
 env0 = (Map.empty, Map.empty)
 

@@ -33,4 +33,5 @@ Druga iteracja - poprawki:
 - ładna obsługa błędów (nie używam nigdzie 'error')
 - definicje typów dopuszczalne na początku pliku
 - rekurencyjne definicje globalne
+- statyczne sprawdzanie istnienia "main"
 
