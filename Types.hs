@@ -174,8 +174,9 @@ infer env (ECon cname) = lookupEnv env cname
 infer env (ECase e branches) = do
   (se, te) <- infer env e
   let newenv = apply se env
-  (r:rs) <- mapM (flip inferBranch env) branches -- branches not empty (parser)
-  foldM foldBranches r rs
+  res <- mapM (flip inferBranch env) branches -- branches not empty (parser)
+  case res of [] -> throwError "ghc error"
+              r:rs -> foldM foldBranches r rs
 
 foldBranches :: (Subst, Type) -> (Subst, Type) -> Infer (Subst, Type)
 foldBranches (s1, t1) (s2, t2) = do
