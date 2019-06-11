@@ -80,8 +80,8 @@ eval e = case e of
   ELam x e -> ask >>= \env -> return $ VClosure x e (fst env)
   ELet x e1 e2 -> do
     (env, _) <- ask
-    rec newenv <- localVal (const newenv) $ (eval e1) >>= \d -> return (Map.insert x d env)
-    localVal (const newenv) $ eval e2
+    rec d <- localVal (const (Map.insert x d env)) $ eval e1
+    localVal (const (Map.insert x d env)) $ eval e2
   ELit (LInt n) -> return $ VInt n
   EOp e1 op e2 -> do
     v1 <- eval e1
