@@ -223,7 +223,8 @@ typeCheck s t [] = (Right t, s)
 typeCheck ss tenv (d:ds) = case d of
   AssignDecl x e -> case doInfer ss e tenv of
     (Left err, s) -> (Left (err ++ "\n  at expression " ++ (show x)), s)
-    (Right (sub, t), s) -> typeCheck s newtenv ds where newtenv = apply sub (addScheme x (generalize tenv t) tenv)
+    (Right (sub, t), s) -> do
+      (trace ((x) ++ (show t)) typeCheck) s newtenv ds where newtenv = apply sub (addScheme x (generalize tenv t) tenv)
   _ -> (Left "must be GHC bug", ss)
 
 

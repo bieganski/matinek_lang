@@ -164,55 +164,56 @@ checkLetterUniq p = not $ hasDuplicates (toList p)
 
 
 infer :: TypeEnv -> Exp -> Infer (Subst, Type)
-infer env (ELit (LInt _)) = return (nullSubst, intT)
-infer env (EVar name) = lookupEnv env name
-infer env (ELam x e) = do
+infer tenv e = iinfer tenv e -- trace ("\nlicze exp: \n" ++ (show e) ++ "\nw envie: \n" ++ (show tenv)) (iinfer tenv e)
+  
+iinfer :: TypeEnv -> Exp -> Infer (Subst, Type)
+iinfer env (ELit (LInt _)) = return (nullSubst, intT)
+iinfer env (EVar name) = lookupEnv env name
+iinfer env (ELam x e) = do
   xtvar <- fresh
   let newenv = addScheme x (Forall [] xtvar) env
   (esubst, etype) <- infer newenv e
   return (esubst, TArr (apply esubst xtvar) etype)
-infer env (EApp e1 e2) = do
+iinfer env (EApp e1 e2) = do
   newvar <- fresh
   (s1, t1) <- infer env e1
   (s2, t2) <- infer (apply s1 env) e2
   ss <- unify (apply s2 t1) (TArr t2 newvar)
   return (ss `compose` s2 `compose` s1, apply ss newvar)
-infer env (ELet x e1 e2) = do
-  xtvar <- fresh
-  let env' = addScheme x (Forall [] xtvar) env
+iinfer env (ELet x e1 e2) = do
+  TVar xtvar <- fresh
+  let env' = addScheme x (Forall [xtvar] (TVar xtvar)) env
   (s1, t1) <- infer env' e1
-  let xsch = generalize (apply s1 env') t1
-  (s2, t2) <- infer (addScheme x xsch env') e2
-  return (s1 `compose` s2, t2)
-infer env (EOp e1 op e2) = do
+  let newenv = apply s1 env'
+  let xsch = generalize newenv t1
+  (s2, t2) <- infer (addScheme x xsch newenv) e2
+  return (s2 `compose` s1, t2)
+iinfer env (EOp e1 op e2) = do
   newvar <- fresh
   (s1, t1) <- infer env e1
   (s2, t2) <- infer env e2
   ss <- unify (TArr t1 (TArr t2 newvar)) (opsT Map.! op)
   return (s1 `compose` s2 `compose` ss, apply ss newvar)
-infer env (ECon cname) = lookupEnv env cname
-infer env (ECase e branches) = do
+iinfer env (ECon cname) = lookupEnv env cname
+iinfer env (ECase e branches) = do
   (se, te) <- infer env e
-  let newenv = apply se env                     
-  res <- mapM (inferBranch env te) branches 
-  case res of [] -> throwError "impossible parser error" -- branches not empty (parser)
-              r:rs -> foldM foldBranches (se, te) (r:rs)
+  let newenv = apply se env
+  typesAndtenvs <- mapM (\(Branch pat _) -> inferPat pat newenv) branches
+  -- check whether patterns types unifies to type of e in 'case e of ...'
+  -- but omit result subst (we dont want to use it)
+  s:substs <- mapM (unify te) (map fst typesAndtenvs)
+  let subst = foldr compose s substs -- TODO mozliwe ze zla kolejnosc (flip compose)
+  let tenvs = map snd typesAndtenvs
+  let branchExps = map (\(Branch _ e) -> e) branches
+  substsAndTypes <- mapM (uncurry infer) (zip tenvs branchExps)
+  f <- fresh
+  foldM foldBranches (subst, f) substsAndTypes
 
 foldBranches :: (Subst, Type) -> (Subst, Type) -> Infer (Subst, Type)
 foldBranches (s1, t1) (s2, t2) = do
   ss <- unify t1 (apply s1 t2)
-  return (compose ss (compose s2 s1), apply ss t2)
-
-inferBranch :: TypeEnv -> Type -> Branch -> Infer (Subst, Type)
-inferBranch env pattype (Branch pat e) = do
-  case checkLetterUniq pat of
-    False -> throwError "pattern letters must be unique!"
-    True -> do
-      (t, newenv) <- inferPat pat env
-      -- TODO check whether pattern types unify
-      infer (trace (show newenv) newenv) e
-
-
+  let s = compose ss (compose s2 s1)
+  return (s, apply s t2)
 
 inferPat :: Pat -> TypeEnv -> Infer (Type, TypeEnv)
 inferPat pat (TypeEnv env) = case pat of
@@ -235,11 +236,7 @@ appType :: (Type, TypeEnv) -> (Type, TypeEnv) -> Infer (Type, TypeEnv)
 appType (t1, TypeEnv env1) (t2, TypeEnv env2) = do
   newvar <- fresh
   s <- unify t1 (TArr t2 newvar)
-  return (apply s newvar, apply s $ TypeEnv $ Map.union env1 env2)
-
-
-
-
+  return (apply s newvar, TypeEnv $ Map.union env2 env1) -- TODO apply s
 
 
 

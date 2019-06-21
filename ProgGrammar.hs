@@ -39,7 +39,18 @@ data Exp
   | EOp Exp Binop Exp
   | ECon ConstrName
   | ECase Exp [Branch]
-  deriving (Show, Eq, Ord, Read)
+  deriving (Eq, Ord, Read)
+
+instance Show Exp where
+  show e = case e of
+    EVar x -> x
+    EApp e1 e2 -> (show e1) ++ " " ++ (show e2)
+    ELam x e -> "\\" ++ x ++ " -> " ++ (show e)
+    ELet x e1 e2 -> "let " ++ x ++ " = " ++ (show e1) ++ " in " ++ (show e2)
+    ECase e branches -> "case " ++ (show e) ++ " of " ++ (show branches)
+    ELit (LInt x) -> show x
+    ECon cname -> cname
+    _ -> "ProgGrammar.hs <-- change this"
 
 
 data Value
