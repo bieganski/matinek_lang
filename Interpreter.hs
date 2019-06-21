@@ -27,6 +27,7 @@ import Types
 
 import ADTProcessing
 
+import Debug.Trace
 
 type Interpret a = ExceptT String (ReaderT Env IO) a
 

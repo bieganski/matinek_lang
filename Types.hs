@@ -196,7 +196,7 @@ infer env (ECase e branches) = do
   let newenv = apply se env                     
   res <- mapM (inferBranch env te) branches 
   case res of [] -> throwError "impossible parser error" -- branches not empty (parser)
-              r:rs -> foldM foldBranches r rs
+              r:rs -> foldM foldBranches (se, te) (r:rs)
 
 foldBranches :: (Subst, Type) -> (Subst, Type) -> Infer (Subst, Type)
 foldBranches (s1, t1) (s2, t2) = do
@@ -209,7 +209,7 @@ inferBranch env pattype (Branch pat e) = do
     False -> throwError "pattern letters must be unique!"
     True -> do
       (t, newenv) <- inferPat pat env
-      -- TODO check whether types unify
+      -- TODO check whether pattern types unify
       infer (trace (show newenv) newenv) e
 
 
@@ -232,10 +232,10 @@ inferPat pat (TypeEnv env) = case pat of
 
 
 appType :: (Type, TypeEnv) -> (Type, TypeEnv) -> Infer (Type, TypeEnv)
-appType (t1, env) (t2, _) = do
+appType (t1, TypeEnv env1) (t2, TypeEnv env2) = do
   newvar <- fresh
   s <- unify t1 (TArr t2 newvar)
-  return (apply s newvar, apply s env)
+  return (apply s newvar, apply s $ TypeEnv $ Map.union env1 env2)
 
 
 
