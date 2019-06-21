@@ -108,8 +108,8 @@ unify (TADT a (t:ts)) (TADT b (tt:tts)) = if a /= b
 unify t1 t2 = throwError $ "cannot unify type \'" ++ (show t1) ++ "\' with \'" ++ (show t2) ++ "\'"
 
 bind :: TVar -> Type -> Infer Subst
-bind tv t | occursCheck tv t = throwError $ "cannot unify " ++ (show tv) ++ " and " ++ (show t)
-          | TVar tv == t = return nullSubst
+bind tv t | TVar tv == t = return nullSubst
+          | occursCheck tv t = throwError $ "cannot unify " ++ (show tv) ++ " and " ++ (show t)
           | otherwise = return $ Subst $ Map.singleton tv t
 
 

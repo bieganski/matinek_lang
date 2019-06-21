@@ -27,7 +27,8 @@ import Types
 
 import ADTProcessing
 
-import Debug.Trace
+-- import Debug.Trace
+trace = flip const
 
 type Interpret a = ExceptT String (ReaderT Env IO) a
 
