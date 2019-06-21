@@ -11,10 +11,13 @@ import Control.Monad.IO.Class
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
+import qualified Data.Set as Set
+
 import Data.Bifunctor (bimap)
 
 import ProgGrammar
 
+import Debug.Trace
 
 
 {-
@@ -143,6 +146,23 @@ opsT = Map.fromList [
   ]
 
 
+
+hasDuplicates :: (Ord a) => [a] -> Bool
+hasDuplicates list = length list /= length set
+  where set = Set.fromList list
+
+toList :: Pat -> [String]
+toList pat = case pat of
+  PVar x -> [x]
+  PLit _ -> []
+  PAny -> []
+  PCon _ pats -> concat (map toList pats)
+  
+checkLetterUniq :: Pat -> Bool
+checkLetterUniq p = not $ hasDuplicates (toList p)
+
+
+
 infer :: TypeEnv -> Exp -> Infer (Subst, Type)
 infer env (ELit (LInt _)) = return (nullSubst, intT)
 infer env (EVar name) = lookupEnv env name
@@ -173,9 +193,9 @@ infer env (EOp e1 op e2) = do
 infer env (ECon cname) = lookupEnv env cname
 infer env (ECase e branches) = do
   (se, te) <- infer env e
-  let newenv = apply se env
-  res <- mapM (flip inferBranch env) branches -- branches not empty (parser)
-  case res of [] -> throwError "ghc error"
+  let newenv = apply se env                     
+  res <- mapM (inferBranch env te) branches 
+  case res of [] -> throwError "impossible parser error" -- branches not empty (parser)
               r:rs -> foldM foldBranches r rs
 
 foldBranches :: (Subst, Type) -> (Subst, Type) -> Infer (Subst, Type)
@@ -183,8 +203,51 @@ foldBranches (s1, t1) (s2, t2) = do
   ss <- unify t1 (apply s1 t2)
   return (compose ss (compose s2 s1), apply ss t2)
 
-inferBranch :: Branch -> TypeEnv -> Infer (Subst, Type)
-inferBranch (Branch _ e) env = infer env e
+inferBranch :: TypeEnv -> Type -> Branch -> Infer (Subst, Type)
+inferBranch env pattype (Branch pat e) = do
+  case checkLetterUniq pat of
+    False -> throwError "pattern letters must be unique!"
+    True -> do
+      (t, newenv) <- inferPat pat env
+      -- TODO check whether types unify
+      infer (trace (show newenv) newenv) e
+
+
+
+inferPat :: Pat -> TypeEnv -> Infer (Type, TypeEnv)
+inferPat pat (TypeEnv env) = case pat of
+  PVar x -> do
+    f <- fresh
+    case f of
+      TVar tv -> return (f, TypeEnv (Map.singleton x (Forall [tv] f)))
+  PCon cname pats -> do
+    case Map.lookup cname env of
+      Nothing -> throwError $ "cannot find constructor with name " ++ cname
+      Just sch@(Forall vars t) -> do
+        pattypes <- mapM (flip inferPat (TypeEnv env)) pats
+        (newt, newenv) <- foldM appType (t, (TypeEnv env)) pattypes
+        return (newt, newenv)
+  PLit (LInt _) -> return (intT, TypeEnv Map.empty)
+  PAny -> fresh >>= \x -> return (x, TypeEnv Map.empty)
+
+
+appType :: (Type, TypeEnv) -> (Type, TypeEnv) -> Infer (Type, TypeEnv)
+appType (t1, env) (t2, _) = do
+  newvar <- fresh
+  s <- unify t1 (TArr t2 newvar)
+  return (apply s newvar, apply s env)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 runInfer :: NumVar -> Infer (Subst, Type) -> (Either String (Subst, Type), NumVar)
