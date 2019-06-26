@@ -181,7 +181,8 @@ iinfer env (EApp e1 e2) = do
   ss <- unify (apply s2 t1) (TArr t2 newvar)
   return (ss `compose` s2 `compose` s1, apply ss newvar)
 iinfer env (ELet x e1 e2) = do
-  TVar xtvar <- fresh
+  tmp <- fresh
+  let TVar xtvar = tmp
   let env' = addScheme x (Forall [xtvar] (TVar xtvar)) env
   (s1, t1) <- infer env' e1
   let newenv = apply s1 env'
@@ -201,7 +202,8 @@ iinfer env (ECase e branches) = do
   typesAndtenvs <- mapM (\(Branch pat _) -> inferPat pat newenv) branches
   -- check whether patterns types unifies to type of e in 'case e of ...'
   -- but omit result subst (we dont want to use it)
-  s:substs <- mapM (unify te) (map fst typesAndtenvs)
+  tmp2 <- mapM (unify te) (map fst typesAndtenvs)
+  let s:substs = tmp2
   let subst = foldr compose s substs -- TODO mozliwe ze zla kolejnosc (flip compose)
   let tenvs = map snd typesAndtenvs
   let branchExps = map (\(Branch _ e) -> e) branches
